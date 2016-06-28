@@ -1,5 +1,5 @@
-ioos_waf_harvester.waf_parser
+catalog_harvesting.waf_parser
 =============================
 
-.. automodule:: ioos_waf_harvester.waf_parser
+.. automodule:: catalog_harvesting.waf_parser
     :members:

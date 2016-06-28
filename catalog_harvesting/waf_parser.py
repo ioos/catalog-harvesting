@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-ioos_waf_harvester/waf_parser.py
+catalog_harvesting/waf_parser.py
 '''
 import requests
 from bs4 import BeautifulSoup

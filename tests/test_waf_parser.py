@@ -3,7 +3,7 @@
 tests/test_waf_parser.py
 '''
 
-from ioos_waf_harvester.waf_parser import WAFParser
+from catalog_harvesting.waf_parser import WAFParser
 from unittest import TestCase
 
 

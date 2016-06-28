@@ -1,5 +1,5 @@
 from setuptools import find_packages, setup
-from ioos_waf_harvester import __version__
+from catalog_harvesting import __version__
 
 def readme():
     with open('README.rst') as f:
@@ -8,7 +8,7 @@ def readme():
 reqs = [line.strip() for line in open('requirements.txt')]
 
 setup(
-    name             = "ioos-waf-harvester",
+    name             = "catalog-harvesting",
     version          = __version__,
     description      = 'Tools for synchronizing WAFs',
     packages         = find_packages(exclude=['tests', 'test.*']),

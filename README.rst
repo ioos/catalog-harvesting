@@ -1,7 +1,8 @@
-IOOS WAF Harvester
-==============================================================
+Catalog Harvesting
+==================
 
-Tools for synchronizing WAFs
+Python Modules to synchronize third party metadata sources with a central
+metadata repository (WAF)
 
 Installing
 ----------------

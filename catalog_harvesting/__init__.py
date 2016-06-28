@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-ioos_waf_harvester/__init__.py
+catalog_harvesting/__init__.py
 '''
 
 import logging

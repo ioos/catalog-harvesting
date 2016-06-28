@@ -3,5 +3,5 @@ Code Documentation
 
 .. toctree::
 
-    ioos_waf_harvester
+    catalog_harvesting
     waf_parser
