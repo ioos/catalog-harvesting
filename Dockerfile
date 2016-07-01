@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
       python-pip
 RUN rm -rf /var/lib/apt/lists/*
 RUN pip install -U pip
-RUN pip install -e git+https://github.com/ioos/catalog-harvesting.git@835d861413ea5e46765ff89fd5c4d481c5894704#egg=catalog-harvesting
+RUN pip install -e git+https://github.com/ioos/catalog-harvesting.git@6d3a424#egg=catalog-harvesting
 RUN useradd -m harvest
 COPY ./contrib/my_init.d /etc/my_init.d
 VOLUME ["/data"]
