@@ -7,6 +7,9 @@ Command line interface for pulling a WAF
 
 from catalog_harvesting.waf_parser import WAFParser
 from catalog_harvesting import get_logger
+from catalog_harvesting.db import initdb
+from sqlalchemy import create_engine
+from sqlalchemy.orm import create_session
 from argparse import ArgumentParser
 import requests
 import os
@@ -21,7 +24,7 @@ def main():
 
     parser = ArgumentParser(description=main.__doc__)
 
-    parser.add_argument('-s', '--src', help='Source WAF')
+    parser.add_argument('-s', '--src', help='Source WAF or Database Connection String')
     parser.add_argument('-d', '--dest', help='Destination Folder')
     parser.add_argument('-v', '--verbose', action='store_true', help='Enables verbose logging')
     parser.add_argument('-f', '--force-clean', action='store_true', help='Removes stale contents of the folder')
@@ -33,7 +36,10 @@ def main():
 
     get_logger().info("Starting")
     if args.src and args.dest:
-        download_waf(args.src, args.dest)
+        if args.src.startswith('http'):
+            download_waf(args.src, args.dest)
+        else:
+            download_from_db(args.src, args.dest)
 
     if args.force_clean and args.dest:
         force_clean(args.dest)
@@ -41,6 +47,23 @@ def main():
 
 def enable_logging():
     logging.basicConfig(level=logging.INFO)
+
+
+def download_from_db(conn_string, dest):
+    '''
+    Download several WAFs using a DB as a source
+    
+    :param str conn_string: SQLAlchemy Connection String
+    '''
+
+    engine = create_engine(conn_string)
+    exports = initdb(engine)
+    session = create_session(bind=engine)
+    for catalog_harvest in session.query(exports['CatalogHarvests']).all():
+        src = catalog_harvest.url
+        provider_str = catalog_harvest.provider
+        path = os.path.join(dest, provider_str)
+        download_waf(src, path)
 
 
 def download_waf(src, dest):
