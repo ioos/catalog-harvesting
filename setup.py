@@ -18,6 +18,11 @@ setup(
     url              = '',
     install_requires = reqs,
     test_requires    = ['pytest'],
+    entry_points     = {
+        'console_scripts': [
+            'catalog-harvest = catalog_harvesting.cli:main'
+        ]
+    },
     classifiers      = [
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',
@@ -30,5 +35,5 @@ setup(
         'Topic :: Documentation :: Sphinx',
         'Topic :: Scientific/Engineering',
         'Topic :: Scientific/Engineering :: GIS'
-    ]
+    ],
 )

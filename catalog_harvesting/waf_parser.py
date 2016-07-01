@@ -25,10 +25,10 @@ class WAFParser(object):
 
     def get_links(self, content):
         '''
-        Returns a list that of anchors in the HTML document
+        Returns a list of tuples: href, text for each anchor in the document
         '''
         soup = BeautifulSoup(content, 'html.parser')
-        return [a.get('href') for a in soup.find_all('a')]
+        return [(a.get('href'), a.text) for a in soup.find_all('a')]
 
     def parse(self, maxdepth=2):
         '''
@@ -60,9 +60,11 @@ class WAFParser(object):
 
         links = self.get_links(response.content)
         follow = []
-        for link in links:
+        for link, text in links:
             # Deal with relative links
             if link.startswith('..'):
+                continue
+            if 'parent' in text.lower():
                 continue
             if link.startswith('//'):
                 link = 'http:' + link
