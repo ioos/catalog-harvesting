@@ -5,3 +5,4 @@ Code Documentation
 
     catalog_harvesting
     waf_parser
+    cli

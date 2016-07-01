@@ -11,6 +11,7 @@ from argparse import ArgumentParser
 import requests
 import os
 import logging
+import time
 
 
 def main():
@@ -23,6 +24,7 @@ def main():
     parser.add_argument('-s', '--src', help='Source WAF')
     parser.add_argument('-d', '--dest', help='Destination Folder')
     parser.add_argument('-v', '--verbose', action='store_true', help='Enables verbose logging')
+    parser.add_argument('-f', '--force-clean', action='store_true', help='Removes stale contents of the folder')
 
     args = parser.parse_args()
 
@@ -32,6 +34,9 @@ def main():
     get_logger().info("Starting")
     if args.src and args.dest:
         download_waf(args.src, args.dest)
+
+    if args.force_clean and args.dest:
+        force_clean(args.dest)
 
 
 def enable_logging():
@@ -76,6 +81,25 @@ def download_file(url, location):
             if chunk:
                 f.write(chunk)
     return location
+
+
+def force_clean(path):
+    '''
+    Deletes any files in path that end in .xml and are older than 1 day
+
+    :param str path: Path to a folder to clean
+    '''
+    now = time.time()
+    for filename in os.listdir(path):
+        filepath = os.path.join(path, filename)
+        if not filename.endswith('.xml'):
+            continue
+
+        file_st = os.stat(filepath)
+        mtime = file_st.st_mtime
+        if (now - mtime) > (24 * 3600):
+            get_logger().info("Removing %s", filepath)
+            os.remove(filepath)
 
 
 if __name__ == '__main__':
