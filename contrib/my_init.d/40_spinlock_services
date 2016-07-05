@@ -13,14 +13,14 @@ echo "Waiting for PostgreSQL"
 
 while true; do
 
-    if [[ $fail_counter -gt 10 ]]; then
+    if [[ $fail_counter -gt 100 ]]; then
         >&2 echo 'Exceed max retries' && exit 1
     fi
 
     if ! pg_isready -h $POSTGRES_HOST -p $POSTGRES_PORT -d $POSTGRES_DB; then
         echo -n "."
         fail_counter=$((fail_counter+1))
-        sleep 20
+        sleep 5
     else
         break
     fi
