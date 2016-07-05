@@ -61,7 +61,7 @@ def download_from_db(conn_string, dest):
     session = create_session(bind=engine)
     for catalog_harvest in session.query(exports['CatalogHarvests']).all():
         src = catalog_harvest.url
-        provider_str = catalog_harvest.provider
+        provider_str = catalog_harvest.organization.name
         path = os.path.join(dest, provider_str)
         download_waf(src, path)
 
