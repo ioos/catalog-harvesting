@@ -1,0 +1,28 @@
+#!/bin/bash
+set -eu
+: ${POSTGRES_HOST:=catalog-registry}
+: ${POSTGRES_PORT:=5432}
+: ${POSTGRES_DB:=registry}
+: ${POSTGRES_USER:=registry}
+: ${POSTGRES_PASSWORD:=registry}
+
+export PGPASSWORD=$POSTGRES_PASSWORD
+fail_counter=0
+
+echo "Waiting for PostgreSQL"
+
+while true; do
+
+    if [[ $fail_counter -gt 10 ]]; then
+        >&2 echo 'Exceed max retries' && exit 1
+    fi
+
+    if ! pg_isready -h $POSTGRES_HOST -p $POSTGRES_PORT -d $POSTGRES_DB; then
+        echo -n "."
+        fail_counter=$((fail_counter+1))
+        sleep 20
+    else
+        break
+    fi
+done
+echo ""

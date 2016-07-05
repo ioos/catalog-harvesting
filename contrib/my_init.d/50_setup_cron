@@ -1,0 +1,11 @@
+#!/bin/bash
+set -eu
+: ${POSTGRES_HOST:=catalog-registry}
+: ${POSTGRES_PORT:=5432}
+: ${POSTGRES_DB:=registry}
+: ${POSTGRES_USER:=registry}
+: ${POSTGRES_PASSWORD:=registry}
+
+echo "0 0 * * * harvest catalog-harvest -s \"postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB\" -d /data -v >> /var/log/harvest/harvest.log 2>&1" >> /etc/crontab
+
+echo "Ready"
