@@ -1,0 +1,16 @@
+#!/bin/bash
+set -eu
+: ${POSTGRES_HOST:=catalog-registry}
+: ${POSTGRES_PORT:=5432}
+: ${POSTGRES_DB:=registry}
+: ${POSTGRES_USER:=registry}
+: ${POSTGRES_PASSWORD:=registry}
+: ${HARVEST_INIT:=false}
+
+echo "Setting up harvest directory"
+chown harvest:harvest /data
+
+if [[ $HARVEST_INIT == "true" ]]; then
+    echo "Harvesting"
+    exec /sbin/setuser harvest catalog-harvest -s "postgresql://$POSTGRES_USER:$POSTGRES_PASSWORD@$POSTGRES_HOST:$POSTGRES_PORT/$POSTGRES_DB" -d /data -v
+fi
