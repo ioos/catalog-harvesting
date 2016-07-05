@@ -20,5 +20,5 @@ RUN chown harvest:harvest /var/log/harvest
 COPY ./contrib/my_init.d /etc/my_init.d
 VOLUME ["/data"]
 
-CMD ["/sbin/my_init", "--", "/bin/bash"]
+CMD ["/sbin/my_init"]
 
