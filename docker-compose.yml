@@ -1,0 +1,8 @@
+version: '2'
+
+services:
+  catalog-harvesting:
+    build: .
+
+  mongo:
+    image: mongo:3.2
