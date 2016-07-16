@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
       python-pip
 RUN rm -rf /var/lib/apt/lists/*
 RUN pip install -U pip
-RUN pip install -e git+https://github.com/ioos/catalog-harvesting.git@ee2bc42ca67f99511aca367a8441f7494f498b01#egg=catalog-harvesting
+RUN pip install -e git+https://github.com/ioos/catalog-harvesting.git@c6c0e83bc0c92ceb01bccd26a8c654f9917f75fc#egg=catalog-harvesting
 RUN useradd -m harvest
 RUN mkdir /var/log/harvest
 RUN chown harvest:harvest /var/log/harvest
