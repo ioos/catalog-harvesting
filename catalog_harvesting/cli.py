@@ -9,6 +9,7 @@ from catalog_harvesting.waf_parser import WAFParser
 from catalog_harvesting import get_logger
 from pymongo import MongoClient
 from argparse import ArgumentParser
+from datetime import datetime
 import requests
 import os
 import logging
@@ -63,11 +64,21 @@ def download_from_db(conn_string, dest):
         db_name = 'default'
 
     db = MongoClient(conn_string)[db_name]
-    for harvest in db.Harvests.find():
-        src = harvest['url']
-        provider_str = harvest['organization']
-        path = os.path.join(dest, provider_str)
-        download_waf(src, path)
+    for harvest in list(db.Harvests.find({"publish": True})):
+        try:
+            src = harvest['url']
+            provider_str = harvest['organization']
+            path = os.path.join(dest, provider_str)
+            download_waf(src, path)
+            db.Harvests.update({"_id": harvest['_id']}, {
+                "$set": {
+                    "last_harvest_dt": datetime.utcnow()
+                }
+            })
+        except:
+            get_logger().exception("Failed to harvest")
+            get_logger().error(harvest)
+            continue
 
 
 def download_waf(src, dest):
