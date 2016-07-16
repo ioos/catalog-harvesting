@@ -7,9 +7,7 @@ Command line interface for pulling a WAF
 
 from catalog_harvesting.waf_parser import WAFParser
 from catalog_harvesting import get_logger
-from catalog_harvesting.db import initdb
-from sqlalchemy import create_engine
-from sqlalchemy.orm import create_session
+from pymongo import MongoClient
 from argparse import ArgumentParser
 import requests
 import os
@@ -49,19 +47,19 @@ def enable_logging():
     logging.basicConfig(level=logging.INFO)
 
 
-def download_from_db(conn_string, dest):
+def download_from_db(conn_string, db_name, dest):
     '''
-    Download several WAFs using a DB as a source
-    
-    :param str conn_string: SQLAlchemy Connection String
+    Download several WAFs using collections from MongoDB as a source
+
+    :param str conn_string: MongoDB connection string
+    :param str db_name: The name of the MongoDB database to connect to
+    :param str dest: Write directory destination
     '''
 
-    engine = create_engine(conn_string)
-    exports = initdb(engine)
-    session = create_session(bind=engine)
-    for catalog_harvest in session.query(exports['CatalogHarvests']).all():
-        src = catalog_harvest.url
-        provider_str = catalog_harvest.organization.name
+    db = MongoClient(conn_string)[db_name]
+    for harvest in db.Harvests.find():
+        src = harvest['url']
+        provider_str = harvest['org']
         path = os.path.join(dest, provider_str)
         download_waf(src, path)
 

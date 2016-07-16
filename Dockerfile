@@ -9,11 +9,10 @@ RUN apt-get update && apt-get install -y \
       libxslt1-dev \
       libpq-dev \
       python-dev \
-      postgresql-client \
       python-pip
 RUN rm -rf /var/lib/apt/lists/*
 RUN pip install -U pip
-RUN pip install -e git+https://github.com/ioos/catalog-harvesting.git@28dc5d27e1b4939ce72c211b58e46f51b521f740#egg=catalog-harvesting
+RUN pip install -e git+https://github.com/benjwadams/catalog-harvesting.git@read_harvests_from_mongo#egg=catalog-harvesting
 RUN useradd -m harvest
 RUN mkdir /var/log/harvest
 RUN chown harvest:harvest /var/log/harvest

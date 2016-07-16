@@ -1,28 +1,19 @@
 #!/bin/bash
 set -eu
-: ${POSTGRES_HOST:=catalog-registry}
-: ${POSTGRES_PORT:=5432}
-: ${POSTGRES_DB:=registry}
-: ${POSTGRES_USER:=registry}
-: ${POSTGRES_PASSWORD:=registry}
+: ${MONGO_HOST:=mongo}
+: ${MONGO_PORT:=27017}
+: ${MONGO_DB:=registry}
+: ${MONGO_USER:=registry}
+: ${MONGO_PASSWORD:=registry}
 
-export PGPASSWORD=$POSTGRES_PASSWORD
 fail_counter=0
 
-echo "Waiting for PostgreSQL"
+echo "Waiting for MongoDB"
 
-while true; do
-
+until nc -z "$MONGO_HOST" "$MONGO_PORT"; do
     if [[ $fail_counter -gt 100 ]]; then
         >&2 echo 'Exceed max retries' && exit 1
     fi
-
-    if ! pg_isready -h $POSTGRES_HOST -p $POSTGRES_PORT -d $POSTGRES_DB; then
-        echo -n "."
-        fail_counter=$((fail_counter+1))
-        sleep 5
-    else
-        break
-    fi
+    sleep 5
 done
 echo ""
