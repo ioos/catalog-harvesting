@@ -1,19 +1,22 @@
-#!/bin/bash
-set -eu
-: ${MONGO_HOST:=mongo}
-: ${MONGO_PORT:=27017}
-: ${MONGO_DB:=registry}
-: ${MONGO_USER:=registry}
-: ${MONGO_PASSWORD:=registry}
+#!/usr/bin/env python
 
-fail_counter=0
+from pymongo import MongoClient
+import os
+import sys
+import time
 
-echo "Waiting for MongoDB"
 
-until nc -z "$MONGO_HOST" "$MONGO_PORT"; do
-    if [[ $fail_counter -gt 100 ]]; then
-        >&2 echo 'Exceed max retries' && exit 1
-    fi
-    sleep 5
-done
-echo ""
+print "Looking for mongo connection"
+conn_string = os.environ.get('MONGO_URL', 'mongodb://mongo')
+i = 0
+while i < 10:
+    i += 1
+    try:
+        db = MongoClient(conn_string, serverSelectionTimeoutMS=1)
+        db.server_info()
+        break
+    except:
+        sys.stdout.write('.')
+        sys.stdout.flush()
+        time.sleep(2)
+

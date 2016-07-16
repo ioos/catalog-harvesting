@@ -47,7 +47,7 @@ def enable_logging():
     logging.basicConfig(level=logging.INFO)
 
 
-def download_from_db(conn_string, db_name, dest):
+def download_from_db(conn_string, dest):
     '''
     Download several WAFs using collections from MongoDB as a source
 
@@ -56,10 +56,16 @@ def download_from_db(conn_string, db_name, dest):
     :param str dest: Write directory destination
     '''
 
+    tokens = conn_string.split('/')
+    if len(tokens) > 3:
+        db_name = tokens[3]
+    else:
+        db_name = 'default'
+
     db = MongoClient(conn_string)[db_name]
     for harvest in db.Harvests.find():
         src = harvest['url']
-        provider_str = harvest['org']
+        provider_str = harvest['organization']
         path = os.path.join(dest, provider_str)
         download_waf(src, path)
 
