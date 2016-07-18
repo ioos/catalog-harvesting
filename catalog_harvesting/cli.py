@@ -75,6 +75,9 @@ def download_from_db(conn_string, dest):
                     "last_harvest_dt": datetime.utcnow()
                 }
             })
+        except KeyboardInterrupt:
+            # exit on SIGINT
+            raise
         except:
             get_logger().exception("Failed to harvest")
             get_logger().error(harvest)
