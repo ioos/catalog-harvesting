@@ -43,7 +43,5 @@ def enable_logging():
     logging.basicConfig(level=logging.INFO)
 
 
-
-
 if __name__ == '__main__':
     main()

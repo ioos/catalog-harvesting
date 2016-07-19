@@ -8,6 +8,7 @@ A microservice designed to perform small tasks in association with the CLI
 from flask import Flask, jsonify
 from pymongo import MongoClient
 from catalog_harvesting.download import download_harvest
+from catalog_harvesting import get_logger
 import os
 
 app = Flask(__name__)
@@ -54,11 +55,15 @@ def get_harvest(harvest_id):
 
     :param str harvest_id: MongoDB ID for the harvest
     '''
-    collection = db.Harvests
-    harvest = collection.find_one({"_id": harvest_id})
-    download_harvest(db, harvest, OUTPUT_DIR)
+    try:
+        collection = db.Harvests
+        harvest = collection.find_one({"_id": harvest_id})
+        download_harvest(db, harvest, OUTPUT_DIR)
 
-    return jsonify({"result": True})
+        return jsonify({"result": True})
+    except Exception as e:
+        get_logger().exception("Failed to harvest %s", harvest_id)
+        return jsonify({"error": e.message, "type": type(e).__name__}), 500
 
 
 if __name__ == '__main__':
