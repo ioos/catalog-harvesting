@@ -24,6 +24,7 @@ COPY ./contrib/my_init.d /etc/my_init.d
 COPY ./contrib/run_web.sh /
 VOLUME ["/data"]
 ENV OUTPUT_DIR /data
+EXPOSE 3000
 
 CMD ["/sbin/my_init", "--", "/run_web.sh"]
 
