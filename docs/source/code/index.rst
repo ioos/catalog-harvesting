@@ -3,6 +3,11 @@ Code Documentation
 
 .. toctree::
 
+    api
+    attempt
     catalog_harvesting
-    waf_parser
     cli
+    download
+    util
+    waf_parser
+
