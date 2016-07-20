@@ -6,6 +6,7 @@ A set of modules to support downloading and synchronizing a WAF
 '''
 from catalog_harvesting.waf_parser import WAFParser
 from catalog_harvesting import get_logger
+from catalog_harvesting.attempt import insert_attempt
 from pymongo import MongoClient
 from datetime import datetime
 import requests
@@ -52,12 +53,13 @@ def download_harvest(db, harvest, dest):
     src = harvest['url']
     provider_str = harvest['organization']
     path = os.path.join(dest, provider_str)
-    download_waf(src, path)
+    records = download_waf(src, path)
     db.Harvests.update({"_id": harvest['_id']}, {
         "$set": {
             "last_harvest_dt": datetime.utcnow()
         }
     })
+    insert_attempt(db, harvest['_id'], records, True)
 
 
 def download_waf(src, dest):
@@ -72,17 +74,20 @@ def download_waf(src, dest):
 
     waf_parser = WAFParser(src)
 
+    count = 0
     for link in waf_parser.parse():
         get_logger().info("Downloading %s", link)
         try:
             doc_name = link.split('/')[-1]
             local_filename = os.path.join(dest, doc_name)
             download_file(link, local_filename)
+            count += 1
         except KeyboardInterrupt:
             raise
         except:
             get_logger().exception("Failed to download")
             continue
+    return count
 
 
 def download_file(url, location):
