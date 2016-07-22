@@ -3,6 +3,6 @@ set -eu
 : ${MONGO_URL:=mongodb://mongo/registry}
 : ${CRON_STRING:=0 0 * * *}
 
-echo "${CRON_STRING} harvest catalog-harvest -s \"${MONGO_URL}\" -d /data -v >> /var/log/harvest/harvest.log 2>&1" > /etc/crontab
+echo "${CRON_STRING} harvest PATH="$PATH:/usr/local/bin" catalog-harvest -s \"${MONGO_URL}\" -d /data -v >> /var/log/harvest/harvest.log 2>&1" > /etc/crontab
 
 echo "Ready"
