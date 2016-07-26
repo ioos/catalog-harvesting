@@ -9,6 +9,10 @@ from catalog_harvesting import get_logger
 from catalog_harvesting.download import download_waf, download_from_db, force_clean
 from argparse import ArgumentParser
 import logging
+import logging.config
+import os
+import json
+import pkg_resources
 
 
 def main():
@@ -26,7 +30,7 @@ def main():
     args = parser.parse_args()
 
     if args.verbose:
-        enable_logging()
+        setup_logging()
 
     get_logger().info("Starting")
     if args.src and args.dest:
@@ -39,8 +43,24 @@ def main():
         force_clean(args.dest)
 
 
-def enable_logging():
-    logging.basicConfig(level=logging.INFO)
+def setup_logging(
+    default_path=None,
+    default_level=logging.INFO,
+    env_key='LOG_CFG'
+):
+    """Setup logging configuration
+
+    """
+    path = default_path or pkg_resources.resource_filename('catalog_harvesting', 'logging.json')
+    value = os.getenv(env_key, None)
+    if value:
+        path = value
+    if os.path.exists(path):
+        with open(path, 'rt') as f:
+            config = json.load(f)
+        logging.config.dictConfig(config)
+    else:
+        logging.basicConfig(level=default_level)
 
 
 if __name__ == '__main__':

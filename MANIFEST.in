@@ -1,3 +1,4 @@
 include README.rst
 include *.txt
 include LICENSE
+include catalog_harvesting/logging.json
