@@ -20,6 +20,15 @@ def unique_id():
     return ''.join([random.choice(charmap) for i in range(17)])
 
 def iso_get(iso_endpoint):
+    '''
+    Takes a URL referencing an ISO19115 XML file and returns a dictionary
+    summarizing the dataset.
+
+    :param str iso_endpoint: A URL string pointing to an ISO 19115 XML document
+    :return: A dictionary summarizing the ISO dataset
+    :rtype: dict
+    '''
+
     ns = {"gmi": "http://www.isotc211.org/2005/gmi",
           "gmd": "http://www.isotc211.org/2005/gmd",
           "srv": "http://www.isotc211.org/2005/srv"}
@@ -40,7 +49,7 @@ def iso_get(iso_endpoint):
                 service_type = cp.protocol
                 service_url = cp.url
                 services.append({'service_type': service_type,
-                                'service_url':  service_url})
+                                 'service_url': service_url})
 
     return {"url": iso_endpoint,
             "title": di.title,
