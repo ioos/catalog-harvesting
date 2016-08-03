@@ -14,9 +14,13 @@ RUN rm -rf /var/lib/apt/lists/*
 RUN pip install -U pip
 RUN mkdir /opt/catalog-harvesting
 COPY catalog_harvesting /opt/catalog-harvesting/catalog_harvesting
-COPY setup.py README.rst requirements.txt LICENSE /opt/catalog-harvesting/
-RUN pip install -e /opt/catalog-harvesting
-RUN pip install gunicorn
+COPY setup.py README.rst requirements.txt requirements_ext.txt LICENSE \
+     /opt/catalog-harvesting/
+# TODO: ideally put external git dependency handling in setup.py under
+# `dependency_links`
+RUN pip install -r /opt/catalog-harvesting/requirements_ext.txt && \
+    pip install -e /opt/catalog-harvesting && \
+    pip install gunicorn
 RUN useradd -m harvest
 RUN mkdir /var/log/harvest
 RUN chown harvest:harvest /var/log/harvest
@@ -27,4 +31,3 @@ ENV OUTPUT_DIR /data
 EXPOSE 3000
 
 CMD ["/sbin/my_init", "--", "/run_web.sh"]
-

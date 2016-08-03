@@ -9,6 +9,7 @@ import requests
 from owslib import iso
 from lxml import etree
 import hashlib
+from ckanext.spatial.validation import ISO19139NGDCSchema
 
 
 
@@ -38,7 +39,7 @@ def iso_get(iso_endpoint):
     hash_val = hashlib.md5(resp.content).hexdigest()
     iso_obj = etree.fromstring(resp.content)
     di_elem = iso_obj.find(".//gmd:MD_DataIdentification", ns)
-    di = iso.MD_DataIdentification(di_elem)
+    di = iso.MD_DataIdentification(di_elem, None)
     sv_ident = iso_obj.findall(".//srv:SV_ServiceIdentification", ns)
     services = []
     for sv in sv_ident:
@@ -51,8 +52,12 @@ def iso_get(iso_endpoint):
                 services.append({'service_type': service_type,
                                  'service_url': service_url})
 
+    validation_errors = [{'error': e, 'line_number': l} for e, l in
+                         ISO19139NGDCSchema.is_valid(iso_obj)[-1]]
+
     return {"url": iso_endpoint,
             "title": di.title,
             "description": di.abstract,
             "services": services,
-            "hash_val": hash_val}
+            "hash_val": hash_val,
+            "validation_errors": validation_errors}

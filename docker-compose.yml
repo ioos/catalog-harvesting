@@ -1,8 +1,32 @@
 version: '2'
 
 services:
-  catalog-harvesting:
-    build: .
+  catalog-harvest-registry:
+    image: catalog-harvest-registry
+    container_name: catalog-harvest-registry
+    env_file: envfile
+    ports:
+      - "80:80"
 
   mongo:
     image: mongo:3.2
+    container_name: mongo
+    volumes:
+      - "mongo_data:/data/db"
+
+  catalog-harvesting:
+    #image: catalog-harvesting
+    build: .
+    container_name: catalog-harvesting
+    env_file: envfile
+    volumes:
+      - "waf:/data"
+
+volumes:
+  mongo_data:
+    external:
+      name: mongo_data
+
+  waf:
+    external:
+      name: waf 
