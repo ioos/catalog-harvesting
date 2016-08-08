@@ -7,6 +7,7 @@ A set of modules to support downloading and synchronizing a WAF
 from catalog_harvesting.waf_parser import WAFParser
 from catalog_harvesting import get_logger
 from catalog_harvesting.attempt import insert_attempt
+from catalog_harvesting.records import run_harvest_attempt_waf_records
 from pymongo import MongoClient
 from datetime import datetime
 import requests
@@ -60,6 +61,7 @@ def download_harvest(db, harvest, dest):
         }
     })
     insert_attempt(db, harvest['_id'], records, True)
+    run_harvest_attempt_waf_records(db, harvest)
 
 
 def download_waf(src, dest):
