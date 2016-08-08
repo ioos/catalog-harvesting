@@ -11,10 +11,9 @@ from lxml import etree
 from datetime import datetime
 from catalog_harvesting import util
 from catalog_harvesting import get_logger
-from catalog_harvesting.api import init_db
 
 
-def run_harvest_attempt_waf_records(harvest_obj):
+def run_harvest_attempt_waf_records(db, harvest_obj):
     """
     Takes a dictionary from harvest data (usually retrieved via MongoDB),
     runs harvest attempts against WAFs, and writes to the harvest updating the
@@ -22,7 +21,6 @@ def run_harvest_attempt_waf_records(harvest_obj):
 
     :param dict harvest_obj: A dictionary representing a harvest to be run
     """
-    db = init_db()
     url = harvest_obj['url']
     soup = BeautifulSoup(requests.get(url).content, 'html.parser')
     links = soup.find_all('a')
@@ -47,10 +45,3 @@ def run_harvest_attempt_waf_records(harvest_obj):
             db.Records.update({"url": rec['url'],
                                "hash_val": {"$ne": rec["hash_val"]}}, rec, True)
             success_count += 1
-    now = datetime.now()
-    harvest_obj['last_harvest_update'] = datetime.now()
-    db.Attempts.insert({'harvest_id': harvest_obj['_id'],
-                        'num_records': success_count,
-                        'date': now})
-    db.Harvests.update({'_id': harvest_obj['_id']},
-                       {'$set': {'last_harvest_dt': now}})
