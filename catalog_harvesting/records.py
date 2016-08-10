@@ -35,6 +35,7 @@ def run_harvest_attempt_waf_records(db, harvest_obj):
         try:
             rec = util.iso_get(link_url)
             rec['update_time'] = datetime.now()
+            rec['harvest_id'] = harvest_obj['_id']
             # hash the xml contents
         except etree.XMLSyntaxError:
             err_msg = "Record for '{}' had malformed XML, skipping".format(
