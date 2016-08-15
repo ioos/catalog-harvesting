@@ -43,6 +43,5 @@ def run_harvest_attempt_waf_records(db, harvest_obj):
             get_logger().error(err_msg)
         else:
             # upsert the record based on whether the url is already existing
-            db.Records.update({"url": rec['url'],
-                               "hash_val": {"$ne": rec["hash_val"]}}, rec, True)
+            db.Records.update({"url": rec['url']}, rec, True)
             success_count += 1
