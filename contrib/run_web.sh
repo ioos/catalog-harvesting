@@ -1,7 +1,7 @@
 #!/bin/bash
-: ${TIMEOUT:=120}
+: ${WORKERS:=4}
 
 # cd into catalog-harvesting directory to prevent python path errors
 # setting PYTHONPATH does not seem to work
 cd /opt/catalog-harvesting
-exec setuser harvest gunicorn -b 0.0.0.0:3000 catalog_harvesting.api:app --timeout "$TIMEOUT"
+exec setuser harvest gunicorn -b 0.0.0.0:3000 catalog_harvesting.api:app --workers "$WORKERS"
