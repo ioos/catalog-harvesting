@@ -92,7 +92,7 @@ def get_harvest(harvest_id):
 
     :param str harvest_id: MongoDB ID for the harvest
     '''
-    queue.enqueue(harvest_job, harvest_id)
+    queue.enqueue(harvest_job, harvest_id, timeout=500)
     return jsonify({"result": True})
 
 

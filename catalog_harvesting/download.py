@@ -57,7 +57,8 @@ def download_harvest(db, harvest, dest):
     records = download_waf(src, path)
     db.Harvests.update({"_id": harvest['_id']}, {
         "$set": {
-            "last_harvest_dt": datetime.utcnow()
+            "last_harvest_dt": datetime.utcnow(),
+            "last_record_count": records
         }
     })
     insert_attempt(db, harvest['_id'], records, True)
