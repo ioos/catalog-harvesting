@@ -8,8 +8,10 @@ A microservice designed to perform small tasks in association with the CLI
 from flask import Flask, jsonify
 from pymongo import MongoClient
 from catalog_harvesting.download import download_harvest
-from catalog_harvesting import get_logger
+from rq import Queue
 import os
+import json
+import redis
 
 app = Flask(__name__)
 
@@ -35,6 +37,28 @@ def init_db():
     db = conn[db_name]
     return db
 
+
+def get_redis_connection():
+    redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379')
+    protocol, address = redis_url.split('://')
+    if protocol != 'redis':
+        raise ValueError('REDIS_URL must be protocol redis')
+    connection_str, path = address.split('/')
+    if ':' in connection_str:
+        host, port = connection_str.split(':')
+    else:
+        port = 6379
+        host = connection_str
+    db = path
+    return host, port, db
+
+REDIS_HOST, REDIS_PORT, REDIS_DB = get_redis_connection()
+redis_pool = redis.ConnectionPool(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
+redis_connection = redis.Redis(connection_pool=redis_pool)
+
+queue = Queue('default', connection=redis_connection)
+
+
 init_db()
 
 
@@ -46,6 +70,19 @@ def index():
     return jsonify(), 204
 
 
+def harvest_job(harvest_id):
+    '''
+    Actually perform the harvest
+
+    :param str harvest_id: ID of harvest
+    '''
+    collection = db.Harvests
+    harvest = collection.find_one({"_id": harvest_id})
+    download_harvest(db, harvest, OUTPUT_DIR)
+
+    return json.dumps({"result": True})
+
+
 @app.route("/api/harvest/<string:harvest_id>", methods=['GET'])
 def get_harvest(harvest_id):
     '''
@@ -55,15 +92,8 @@ def get_harvest(harvest_id):
 
     :param str harvest_id: MongoDB ID for the harvest
     '''
-    try:
-        collection = db.Harvests
-        harvest = collection.find_one({"_id": harvest_id})
-        download_harvest(db, harvest, OUTPUT_DIR)
-
-        return jsonify({"result": True})
-    except Exception as e:
-        get_logger().exception("Failed to harvest %s", harvest_id)
-        return jsonify({"error": e.message, "type": type(e).__name__}), 500
+    queue.enqueue(harvest_job, harvest_id, timeout=500)
+    return jsonify({"result": True})
 
 
 if __name__ == '__main__':

@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
       libxslt1-dev \
       libpq-dev \
       python-dev \
+      redis-tools \
       python-pip
 RUN rm -rf /var/lib/apt/lists/*
 RUN pip install -U pip
