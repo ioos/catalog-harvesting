@@ -92,6 +92,19 @@ def get_harvest(harvest_id):
 
     :param str harvest_id: MongoDB ID for the harvest
     '''
+    global db
+    try:
+        db.Harvests.update({"_id": harvest_id}, {
+            "$set": {
+                "last_harvest_dt": "pending",
+                "last_record_count": 0,
+                "last_good_count": 0,
+                "last_bad_count": 0
+            }
+        })
+    except Exception as e:
+        return jsonify(error=type(e).__name__, message=e.message), 500
+
     queue.enqueue(harvest_job, harvest_id, timeout=500)
     return jsonify({"result": True})
 
