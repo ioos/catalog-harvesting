@@ -6,8 +6,7 @@ A set of modules to support downloading and synchronizing a WAF
 '''
 from catalog_harvesting.waf_parser import WAFParser
 from catalog_harvesting import get_logger
-from catalog_harvesting.attempt import insert_attempt
-from catalog_harvesting.records import run_harvest_attempt_waf_records
+from catalog_harvesting.records import parse_records
 from pymongo import MongoClient
 from datetime import datetime
 import requests
@@ -52,17 +51,30 @@ def download_harvest(db, harvest, dest):
                          harvests.
     '''
     src = harvest['url']
-    provider_str = harvest['organization']
-    path = os.path.join(dest, provider_str)
-    records = download_waf(src, path)
     db.Harvests.update({"_id": harvest['_id']}, {
         "$set": {
-            "last_harvest_dt": datetime.utcnow(),
-            "last_record_count": records
+            "last_harvest_dt": "harvesting"
         }
     })
-    insert_attempt(db, harvest['_id'], records, True)
-    run_harvest_attempt_waf_records(db, harvest)
+    try:
+        provider_str = harvest['organization']
+        path = os.path.join(dest, provider_str)
+        records, errors = download_waf(src, path)
+        good, bad = parse_records(db, harvest)
+        db.Harvests.update({"_id": harvest['_id']}, {
+            "$set": {
+                "last_harvest_dt": datetime.utcnow(),
+                "last_record_count": records,
+                "last_good_count": good,
+                "last_bad_count": bad
+            }
+        })
+    except:
+        db.Harvests.update({"_id": harvest['_id']}, {
+            "$set": {
+                "last_harvest_dt": datetime.utcnow()
+            }
+        })
 
 
 def download_waf(src, dest):
@@ -78,6 +90,7 @@ def download_waf(src, dest):
     waf_parser = WAFParser(src)
 
     count = 0
+    errors = 0
     for link in waf_parser.parse():
         get_logger().info("Downloading %s", link)
         try:
@@ -88,9 +101,10 @@ def download_waf(src, dest):
         except KeyboardInterrupt:
             raise
         except:
+            errors += 1
             get_logger().exception("Failed to download")
             continue
-    return count
+    return count, errors
 
 
 def download_file(url, location):

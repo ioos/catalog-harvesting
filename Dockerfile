@@ -10,7 +10,10 @@ RUN apt-get update && apt-get install -y \
       libpq-dev \
       python-dev \
       redis-tools \
+      wget \
       python-pip
+COPY contrib/install_python.sh /install_python.sh
+RUN /install_python.sh
 RUN rm -rf /var/lib/apt/lists/*
 RUN pip install -U pip
 RUN mkdir /opt/catalog-harvesting
