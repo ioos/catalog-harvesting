@@ -51,6 +51,7 @@ def download_harvest(db, harvest, dest):
                          harvests.
     '''
     src = harvest['url']
+    get_logger().info('harvesting: %s' % src)
     db.Harvests.update({"_id": harvest['_id']}, {
         "$set": {
             "last_harvest_dt": "harvesting"
