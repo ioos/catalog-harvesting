@@ -46,6 +46,9 @@ def parse_records(db, harvest_obj):
                 "validation_errors": ["XML Syntax Error: %s" % e.message]
             }
             get_logger().error(err_msg)
+        except:
+            get_logger().exception("Failed to create record")
+            raise
         # upsert the record based on whether the url is already existing
         db.Records.update({"url": rec['url']}, rec, True)
         if len(rec['validation_errors']):
@@ -80,15 +83,12 @@ def validate(xml_string):
 
     :param str xml_string: A string containing an XML ISO-19115-2 Document
     '''
-    ns = {"gmi": "http://www.isotc211.org/2005/gmi",
-          "gmd": "http://www.isotc211.org/2005/gmd",
-          "srv": "http://www.isotc211.org/2005/srv"}
-
     hash_val = hashlib.md5(xml_string).hexdigest()
     iso_obj = etree.fromstring(xml_string)
-    di_elem = iso_obj.find(".//gmd:MD_DataIdentification", ns)
+    file_id = (iso_obj.xpath("./gmd:fileIdentifier/gco:CharacterString/text()", namespaces=iso_obj.nsmap) or [None])[0]
+    di_elem = iso_obj.find(".//gmd:MD_DataIdentification", iso_obj.nsmap)
     di = iso.MD_DataIdentification(di_elem, None)
-    sv_ident = iso_obj.findall(".//srv:SV_ServiceIdentification", ns)
+    sv_ident = iso_obj.findall(".//srv:SV_ServiceIdentification", iso_obj.nsmap)
     services = []
     for sv in sv_ident:
         serv = iso.SV_ServiceIdentification(sv)
@@ -107,4 +107,5 @@ def validate(xml_string):
             "description": di.abstract,
             "services": services,
             "hash_val": hash_val,
+            "file_id": file_id,
             "validation_errors": validation_errors}
