@@ -130,13 +130,15 @@ def force_clean(path):
     :param str path: Path to a folder to clean
     '''
     now = time.time()
-    for filename in os.listdir(path):
-        filepath = os.path.join(path, filename)
-        if not filename.endswith('.xml'):
-            continue
+    for root, dirs, files in os.walk(path):
+        for filename in files:
+            filepath = os.path.join(root, filename)
+            if not filename.endswith('.xml'):
+                continue
 
-        file_st = os.stat(filepath)
-        mtime = file_st.st_mtime
-        if (now - mtime) > (24 * 3600):
-            get_logger().info("Removing %s", filepath)
-            os.remove(filepath)
+            file_st = os.stat(filepath)
+            mtime = file_st.st_mtime
+            if (now - mtime) > (24 * 3600):
+                get_logger().info("Removing %s", filepath)
+                os.remove(filepath)
+

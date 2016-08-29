@@ -40,6 +40,7 @@ def main():
             download_from_db(args.src, args.dest)
 
     if args.force_clean and args.dest:
+        get_logger().info("Removing stale datasets")
         force_clean(args.dest)
 
 

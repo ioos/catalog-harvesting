@@ -29,6 +29,7 @@ def parse_records(db, harvest_obj):
     good = 0
     bad = 0
 
+    db.Records.remove({"harvest_id": harvest_obj['_id']})
     for link in waf_parser.parse():
         try:
             rec = iso_get(link)
@@ -50,7 +51,7 @@ def parse_records(db, harvest_obj):
             get_logger().exception("Failed to create record")
             raise
         # upsert the record based on whether the url is already existing
-        db.Records.update({"url": rec['url']}, rec, True)
+        db.Records.insert(rec)
         if len(rec['validation_errors']):
             bad += 1
         else:
