@@ -105,7 +105,7 @@ def get_harvest(harvest_id):
     except Exception as e:
         return jsonify(error=type(e).__name__, message=e.message), 500
 
-    queue.enqueue(harvest_job, harvest_id, timeout=500)
+    queue.enqueue(harvest_job, harvest_id, timeout=900)
     return jsonify({"result": True})
 
 
