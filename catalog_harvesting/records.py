@@ -48,7 +48,7 @@ def parse_records(db, harvest_obj):
             }
             get_logger().error(err_msg)
         except:
-            get_logger().exception("Failed to create record")
+            get_logger().exception("Failed to create record: %s", link)
             raise
         # upsert the record based on whether the url is already existing
         db.Records.insert(rec)
@@ -86,10 +86,13 @@ def validate(xml_string):
     '''
     hash_val = hashlib.md5(xml_string).hexdigest()
     iso_obj = etree.fromstring(xml_string)
-    file_id = (iso_obj.xpath("./gmd:fileIdentifier/gco:CharacterString/text()", namespaces=iso_obj.nsmap) or [None])[0]
-    di_elem = iso_obj.find(".//gmd:MD_DataIdentification", iso_obj.nsmap)
+    nsmap = iso_obj.nsmap
+    if None in nsmap:
+        del nsmap[None]
+    file_id = (iso_obj.xpath("./gmd:fileIdentifier/gco:CharacterString/text()", namespaces=nsmap) or [None])[0]
+    di_elem = iso_obj.find(".//gmd:MD_DataIdentification", nsmap)
     di = iso.MD_DataIdentification(di_elem, None)
-    sv_ident = iso_obj.findall(".//srv:SV_ServiceIdentification", iso_obj.nsmap)
+    sv_ident = iso_obj.findall(".//srv:SV_ServiceIdentification", nsmap)
     services = []
     for sv in sv_ident:
         serv = iso.SV_ServiceIdentification(sv)
