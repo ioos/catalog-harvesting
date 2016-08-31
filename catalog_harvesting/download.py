@@ -71,6 +71,7 @@ def download_harvest(db, harvest, dest):
             }
         })
     except:
+        get_logger().exception("Failed to successfully harvest %s", harvest['url'])
         db.Harvests.update({"_id": harvest['_id']}, {
             "$set": {
                 "last_harvest_dt": datetime.utcnow()
