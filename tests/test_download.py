@@ -11,7 +11,7 @@ import shutil
 import os
 import pytest
 
-from catalog_harvesting.download import download_waf
+from catalog_harvesting.harvest import download_waf
 
 
 @pytest.mark.int

@@ -7,7 +7,7 @@ A microservice designed to perform small tasks in association with the CLI
 
 from flask import Flask, jsonify
 from pymongo import MongoClient
-from catalog_harvesting.download import download_harvest
+from catalog_harvesting.harvest import download_harvest
 from rq import Queue
 import os
 import json

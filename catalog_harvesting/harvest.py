@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-catalog_harvesting/download.py
+harvest.py
 
 A set of modules to support downloading and synchronizing a WAF
 '''

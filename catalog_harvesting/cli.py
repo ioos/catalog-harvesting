@@ -6,7 +6,7 @@ Command line interface for pulling a WAF
 '''
 
 from catalog_harvesting import get_logger
-from catalog_harvesting.download import download_waf, download_from_db, force_clean
+from catalog_harvesting.harvest import download_waf, download_from_db, force_clean
 from argparse import ArgumentParser
 import logging
 import logging.config
