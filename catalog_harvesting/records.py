@@ -4,8 +4,8 @@ catalog_harvesting/records.py
 
 Logic for records harvested from data sources (i.e. WAFs)
 '''
+from __future__ import print_function
 
-from catalog_harvesting.waf_parser import WAFParser
 from lxml import etree
 from datetime import datetime
 from catalog_harvesting import get_logger
@@ -15,7 +15,7 @@ import hashlib
 import requests
 
 
-def parse_records(db, harvest_obj):
+def parse_records(db, harvest_obj, link, location):
     '''
     Downloads each XML document from the source and performs XSD Validation on
     the record. Returns a tuple of two integers representing the quantity of
@@ -24,40 +24,36 @@ def parse_records(db, harvest_obj):
 
     :param db: MongoDB Databse Object
     :param dict harvest_obj: A dictionary representing a harvest to be run
+    :param str link: URL to the Record
+    :param str location: File path to the XML document on local filesystem.
     '''
-    waf_parser = WAFParser(harvest_obj['url'])
-    good = 0
-    bad = 0
-
-    db.Records.remove({"harvest_id": harvest_obj['_id']})
-    for link in waf_parser.parse():
-        try:
-            rec = iso_get(link)
-            rec['update_time'] = datetime.now()
-            rec['harvest_id'] = harvest_obj['_id']
-            # hash the xml contents
-        except etree.XMLSyntaxError as e:
-            err_msg = "Record for '{}' had malformed XML, skipping".format(
-                      link)
-            rec = {
-                "title": "",
-                "description": "",
-                "services": [],
-                "hash_val": None,
-                "validation_errors": ["XML Syntax Error: %s" % e.message]
-            }
-            get_logger().error(err_msg)
-        except:
-            get_logger().exception("Failed to create record: %s", link)
-            raise
-        # upsert the record based on whether the url is already existing
-        db.Records.insert(rec)
-        if len(rec['validation_errors']):
-            bad += 1
-        else:
-            good += 1
-
-    return good, bad
+    with open(location, 'r') as f:
+        doc = f.read()
+    try:
+        rec = validate(doc)
+        # After the validation has been performed, patch the geometry
+        patch_geometry(location)
+        rec['url'] = link
+        rec['update_time'] = datetime.now()
+        rec['harvest_id'] = harvest_obj['_id']
+        # hash the xml contents
+    except etree.XMLSyntaxError as e:
+        err_msg = "Record for '{}' had malformed XML, skipping".format(
+                  link)
+        rec = {
+            "title": "",
+            "description": "",
+            "services": [],
+            "hash_val": None,
+            "validation_errors": ["XML Syntax Error: %s" % e.message]
+        }
+        get_logger().error(err_msg)
+    except:
+        get_logger().exception("Failed to create record: %s", link)
+        raise
+    # upsert the record based on whether the url is already existing
+    db.Records.insert(rec)
+    return rec
 
 
 def iso_get(iso_endpoint):
@@ -113,3 +109,42 @@ def validate(xml_string):
             "hash_val": hash_val,
             "file_id": file_id,
             "validation_errors": validation_errors}
+
+
+def patch_geometry(location):
+    '''
+    This function attempts to make a patch to documents that define Extents as
+    a point. By offseting the bounds very slightly the geometry can be properly
+    indexed into catalogs as a bounding box of a very small size.
+
+    :param str location: Location of the document to update
+    '''
+    with open(location, 'r') as f:
+        buf = f.read()
+    get_logger().info("Content-Length INPUT: %s", len(buf))
+    xml_root = etree.fromstring(buf)
+    nsmap = xml_root.nsmap
+    if None in nsmap:
+        del nsmap[None]
+
+    bbox = (xml_root.xpath("./gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox", namespaces=nsmap) or [None])[0]
+    if bbox is None:
+        return
+
+    ll_lon = bbox.xpath('./gmd:westBoundLongitude/gco:Decimal', namespaces=nsmap)[0]
+    ll_lat = bbox.xpath('./gmd:southBoundLatitude/gco:Decimal', namespaces=nsmap)[0]
+    ur_lon = bbox.xpath('./gmd:eastBoundLongitude/gco:Decimal', namespaces=nsmap)[0]
+    ur_lat = bbox.xpath('./gmd:northBoundLatitude/gco:Decimal', namespaces=nsmap)[0]
+    bbox = [[float(ll_lon.text), float(ll_lat.text)], [float(ur_lon.text), float(ur_lat.text)]]
+
+    if bbox[0] == bbox[1]:
+        ll_lon.text = str(float(ll_lon.text) - 0.00001)
+        ur_lon.text = str(float(ur_lon.text) + 0.00001)
+        ll_lat.text = str(float(ll_lat.text) - 0.00001)
+        ur_lat.text = str(float(ur_lat.text) + 0.00001)
+
+        # Only once we make sure it's a point can we update the file
+        buf = etree.tostring(xml_root)
+        get_logger().info("Content-Length OUTPUT: %s", len(buf))
+        with open(location, 'wb') as f:
+            f.write(buf)

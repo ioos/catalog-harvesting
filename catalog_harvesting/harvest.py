@@ -60,14 +60,13 @@ def download_harvest(db, harvest, dest):
     try:
         provider_str = harvest['organization']
         path = os.path.join(dest, provider_str)
-        records, errors = download_waf(src, path)
-        good, bad = parse_records(db, harvest)
+        records, errors = download_waf(db, harvest, src, path)
         db.Harvests.update({"_id": harvest['_id']}, {
             "$set": {
                 "last_harvest_dt": datetime.utcnow(),
                 "last_record_count": records,
-                "last_good_count": good,
-                "last_bad_count": bad
+                "last_good_count": (records - errors),
+                "last_bad_count": errors
             }
         })
     except:
@@ -79,10 +78,13 @@ def download_harvest(db, harvest, dest):
         })
 
 
-def download_waf(src, dest):
+def download_waf(db, harvest, src, dest):
     '''
     Downloads a WAF's contents to a destination
 
+    :param db: Mongo DB Client
+    :param dict harvest: A dictionary returned from the mongo collection for
+                         harvests.
     :param url src: URL to the WAF
     :param str dest: Folder to download to
     '''
@@ -90,6 +92,7 @@ def download_waf(src, dest):
         os.makedirs(dest)
 
     waf_parser = WAFParser(src)
+    db.Records.remove({"harvest_id": harvest['_id']})
 
     count = 0
     errors = 0
@@ -99,6 +102,9 @@ def download_waf(src, dest):
             doc_name = link.split('/')[-1]
             local_filename = os.path.join(dest, doc_name)
             download_file(link, local_filename)
+            rec = parse_records(db, harvest, link, local_filename)
+            if len(rec['validation_errors']):
+                errors += 1
             count += 1
         except KeyboardInterrupt:
             raise
