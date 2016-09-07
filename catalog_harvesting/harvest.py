@@ -7,6 +7,7 @@ A set of modules to support downloading and synchronizing a WAF
 from catalog_harvesting.waf_parser import WAFParser
 from catalog_harvesting import get_logger
 from catalog_harvesting.records import parse_records
+from catalog_harvesting.ckan_api import get_harvest_info, create_harvest_job
 from pymongo import MongoClient
 from datetime import datetime
 import requests
@@ -69,6 +70,7 @@ def download_harvest(db, harvest, dest):
                 "last_bad_count": errors
             }
         })
+        trigger_ckan_harvest(db, harvest)
     except:
         get_logger().exception("Failed to successfully harvest %s", harvest['url'])
         db.Harvests.update({"_id": harvest['_id']}, {
@@ -76,6 +78,23 @@ def download_harvest(db, harvest, dest):
                 "last_harvest_dt": datetime.utcnow()
             }
         })
+
+
+def trigger_ckan_harvest(db, harvest):
+    '''
+    Initiates a CKAN Harvest
+
+    :param db: Mongo DB Client
+    :param dict harvest: A dictionary returned from the mongo collection for
+                         harvests.
+    '''
+    try:
+        ckan_harvest = get_harvest_info(db, harvest)
+        ckan_harvest_id = ckan_harvest['id']
+
+        create_harvest_job(ckan_harvest_id)
+    except:
+        get_logger().exception("Failed to initiate CKAN Harvest")
 
 
 def download_waf(db, harvest, src, dest):
