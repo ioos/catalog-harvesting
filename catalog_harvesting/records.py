@@ -32,7 +32,14 @@ def parse_records(db, harvest_obj, link, location):
     try:
         rec = validate(doc)
         # After the validation has been performed, patch the geometry
-        patch_geometry(location)
+        try:
+            patch_geometry(location)
+        except:
+            get_logger().exception("Failed to patch geometry for %s", link)
+            rec["validation_errors"] = [{
+                "line_number": "?",
+                "error": "Invalid Geometry. See gmd:EX_GeographicBoundingBox"
+            }]
         rec['url'] = link
         rec['update_time'] = datetime.now()
         rec['harvest_id'] = harvest_obj['_id']
@@ -45,7 +52,10 @@ def parse_records(db, harvest_obj, link, location):
             "description": "",
             "services": [],
             "hash_val": None,
-            "validation_errors": ["XML Syntax Error: %s" % e.message]
+            "validation_errors": [{
+                "line_number": "?",
+                "error": "XML Syntax Error: %s" % e.message
+            }]
         }
         get_logger().error(err_msg)
     except:
