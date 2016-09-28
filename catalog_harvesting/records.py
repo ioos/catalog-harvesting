@@ -13,6 +13,7 @@ from ckanext.spatial.validation import ISO19139NGDCSchema
 from owslib import iso
 import hashlib
 import requests
+import os
 
 
 def parse_records(db, harvest_obj, link, location):
@@ -30,7 +31,13 @@ def parse_records(db, harvest_obj, link, location):
     with open(location, 'r') as f:
         doc = f.read()
     try:
+        parts = location.split('/')
+        organization = parts[-2]
+        filename = parts[-1]
+        waf_url = os.environ.get('WAF_URL_ROOT', 'http://registry.ioos.us/')
+        record_url = os.path.join(waf_url, organization, filename)
         rec = validate(doc)
+        rec['record_url'] = record_url
         # After the validation has been performed, patch the geometry
         try:
             patch_geometry(location)
@@ -40,6 +47,7 @@ def parse_records(db, harvest_obj, link, location):
                 "line_number": "?",
                 "error": "Invalid Geometry. See gmd:EX_GeographicBoundingBox"
             }]
+            rec['record_url'] = None
         rec['url'] = link
         rec['update_time'] = datetime.now()
         rec['harvest_id'] = harvest_obj['_id']
