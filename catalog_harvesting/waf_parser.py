@@ -74,6 +74,9 @@ class WAFParser(object):
             if link.endswith('.xml'):
                 documents.append(link)
 
+            if 'thredds/iso' in link:
+                documents.append(link)
+
             if link.endswith('/'):
                 follow.append(link)
 
