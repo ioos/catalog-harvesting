@@ -120,6 +120,9 @@ def download_waf(db, harvest, src, dest):
         try:
             doc_name = link.split('/')[-1]
             local_filename = os.path.join(dest, doc_name)
+            # CKAN only looks for XML documents for the harvester
+            if not local_filename.endswith('.xml'):
+                local_filename += '.xml'
             download_file(link, local_filename)
             rec = parse_records(db, harvest, link, local_filename)
             if len(rec['validation_errors']):
