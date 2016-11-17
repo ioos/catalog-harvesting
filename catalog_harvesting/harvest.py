@@ -6,12 +6,14 @@ A set of modules to support downloading and synchronizing a WAF
 '''
 from catalog_harvesting.waf_parser import WAFParser
 from catalog_harvesting import get_logger
-from catalog_harvesting.records import parse_records, validate, patch_geometry
+from catalog_harvesting.records import (parse_records, validate,
+                                        process_doc, patch_geometry)
 from catalog_harvesting.ckan_api import get_harvest_info, create_harvest_job
 from owslib.csw import CatalogueServiceWeb
 from owslib.iso import namespaces
 from pymongo import MongoClient
 from datetime import datetime
+from lxml import etree
 import requests
 import os
 import time
@@ -79,7 +81,8 @@ def download_harvest(db, harvest, dest):
         })
         trigger_ckan_harvest(db, harvest)
     except:
-        get_logger().exception("Failed to successfully harvest %s", harvest['url'])
+        get_logger().exception("Failed to successfully harvest %s",
+                               harvest['url'])
         db.Harvests.update({"_id": harvest['_id']}, {
             "$set": {
                 "last_harvest_dt": datetime.utcnow()
@@ -158,55 +161,63 @@ def download_csw(db, harvest, csw_url, dest):
         os.makedirs(dest)
 
     csw = CatalogueServiceWeb(csw_url)
-    db.Records.remove({"harvest_id": harvest['_id']})
-    csw.getrecords2(outputschema=namespaces['gmd'], #Return ISO 19115 metadata
-                    esn='full', maxrecords=10000)
-
     # remove any records from past run
     db.Records.remove({"harvest_id": harvest['_id']})
-
     count, errors = 0, 0
-    for name, raw_rec in csw.records.items():
-        file_loc = os.path.join(dest, name + '.xml')
-        with open(file_loc, 'wb') as f:
-            f.write(raw_rec.xml)
-        try:
-            rec = validate(raw_rec.xml)
-            # After the validation has been performed, patch the geometry
+    # start a loop to fetch all the records.  Some CSW servers have limits on
+    # the number of records you can fetch and fetching many records at once
+    # is not particularly memory efficient, so fetch in batches of 100 until
+    # the matches are exhausted
+    rec_offset, batches = 0, 0
+    # set a maximum number of record batches just as a precaution in case
+    # the CSW fails to operate correctly while fetching, for example
+    max_batches = 10000 # set
+    while True:
+        csw.getrecords2(outputschema=namespaces['gmd'], #Return ISO 19115 metadata
+                        startposition=rec_offset,
+                        esn='full', maxrecords=100)
+
+        for name, raw_rec in csw.records.items():
+            # replace slashes with underscore so writing to file does not
+            # cause missing file
+            name_sanitize = name.replace('/', '_')
+            file_loc = os.path.join(dest, name_sanitize + '.xml')
+            print(file_loc)
+            with open(file_loc, 'wb') as f:
+                f.write(raw_rec.xml)
             try:
-                patch_geometry(file_loc)
-            except:
-                get_logger().exception("Failed to patch geometry for CSW record {}".format(link))
-                rec["validation_errors"].append({
-                    "line_number": "?",
-                    "error": "Invalid Geometry. See gmd:EX_GeographicBoundingBox"
-                })
-            rec['csw_endpoint'] = csw_url
-            rec['update_time'] = datetime.now()
-            rec['harvest_id'] = harvest['_id']
-            if len(rec['validation_errors']):
+                rec = process_doc(raw_rec.xml, csw_url, file_loc, harvest, csw_url,
+                                db)
+                if len(rec['validation_errors']):
+                    errors += 1
+                count += 1
+            except etree.XMLSyntaxError as e:
+                err_msg = "Record for '{}' had malformed XML, skipping".format(name)
+                rec = {
+                    "title": "",
+                    "description": "",
+                    "services": [],
+                    "hash_val": None,
+                    "validation_errors": [{
+                        "line_number": "?",
+                        "error": "XML Syntax Error: %s" % e.message
+                    }]
+                }
                 errors += 1
-            count += 1
-        except etree.XMLSyntaxError as e:
-            err_msg = "Record for '{}' had malformed XML, skipping".format(link)
-            rec = {
-                "title": "",
-                "description": "",
-                "services": [],
-                "hash_val": None,
-                "validation_errors": [{
-                    "line_number": "?",
-                    "error": "XML Syntax Error: %s" % e.message
-                }]
-            }
-            errors += 1
-            count += 1
-            get_logger().error(err_msg)
-        except:
-            get_logger().exception("Failed to create record: %s", link)
-            raise
-        print(rec)
-        db.Records.insert(rec)
+                count += 1
+                get_logger().error(err_msg)
+            except:
+                get_logger().exception("Failed to create record: %s", name)
+                raise
+        # if we've exhausted all the csw matches, break out of the CSW
+        # fetch loop
+        if (csw.results['matches'] == csw.results['nextrecord'] - 1 or
+            batches >= max_batches):
+            break
+        else:
+            rec_offset = csw.results['nextrecord']
+            batches += 1
+
     return count, errors
 
 
