@@ -182,7 +182,7 @@ def download_csw(db, harvest, csw_url, dest):
             # cause missing file
             name_sanitize = name.replace('/', '_')
             file_loc = os.path.join(dest, name_sanitize + '.xml')
-            print(file_loc)
+            get_logger().info("Writing to file %s", file_loc)
             with open(file_loc, 'wb') as f:
                 f.write(raw_rec.xml)
             try:
