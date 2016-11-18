@@ -6,10 +6,14 @@ A set of modules to support downloading and synchronizing a WAF
 '''
 from catalog_harvesting.waf_parser import WAFParser
 from catalog_harvesting import get_logger
-from catalog_harvesting.records import parse_records
+from catalog_harvesting.records import (parse_records, validate,
+                                        process_doc, patch_geometry)
 from catalog_harvesting.ckan_api import get_harvest_info, create_harvest_job
+from owslib.csw import CatalogueServiceWeb
+from owslib.iso import namespaces
 from pymongo import MongoClient
 from datetime import datetime
+from lxml import etree
 import requests
 import os
 import time
@@ -61,7 +65,12 @@ def download_harvest(db, harvest, dest):
     try:
         provider_str = harvest['organization']
         path = os.path.join(dest, provider_str)
-        records, errors = download_waf(db, harvest, src, path)
+        if harvest['harvest_type'] == 'WAF':
+            records, errors = download_waf(db, harvest, src, path)
+        elif harvest['harvest_type'] == 'CSW':
+            records, errors = download_csw(db, harvest, src, path)
+        else:
+            raise TypeError('harvest_type "{}" is not supported; use WAF or CSW'.format(harvest['harvest_type']))
         db.Harvests.update({"_id": harvest['_id']}, {
             "$set": {
                 "last_harvest_dt": datetime.utcnow(),
@@ -72,7 +81,8 @@ def download_harvest(db, harvest, dest):
         })
         trigger_ckan_harvest(db, harvest)
     except:
-        get_logger().exception("Failed to successfully harvest %s", harvest['url'])
+        get_logger().exception("Failed to successfully harvest %s",
+                               harvest['url'])
         db.Harvests.update({"_id": harvest['_id']}, {
             "$set": {
                 "last_harvest_dt": datetime.utcnow()
@@ -130,10 +140,84 @@ def download_waf(db, harvest, src, dest):
             count += 1
         except KeyboardInterrupt:
             raise
-        except:
+        except Exception:
             errors += 1
             get_logger().exception("Failed to download")
             continue
+    return count, errors
+
+
+def download_csw(db, harvest, csw_url, dest):
+    '''
+    Downloads from a CSW endpoint.
+
+    :param db: Mongo DB Client
+    :param dict harvest: A dictionary returned from the mongo collection for
+                         harvests.
+    :param url csw_url: URL to the CSW endpoint
+    :param str dest: Folder to download to
+    '''
+    if not os.path.exists(dest):
+        os.makedirs(dest)
+
+    csw = CatalogueServiceWeb(csw_url)
+    # remove any records from past run
+    db.Records.remove({"harvest_id": harvest['_id']})
+    count, errors = 0, 0
+    # start a loop to fetch all the records.  Some CSW servers have limits on
+    # the number of records you can fetch and fetching many records at once
+    # is not particularly memory efficient, so fetch in batches of 100 until
+    # the matches are exhausted
+    rec_offset, batches = 0, 0
+    # set a maximum number of record batches just as a precaution in case
+    # the CSW fails to operate correctly while fetching, for example
+    max_batches = 10000 # set
+    while True:
+        csw.getrecords2(outputschema=namespaces['gmd'], #Return ISO 19115 metadata
+                        startposition=rec_offset,
+                        esn='full', maxrecords=100)
+
+        for name, raw_rec in csw.records.items():
+            # replace slashes with underscore so writing to file does not
+            # cause missing file
+            name_sanitize = name.replace('/', '_')
+            file_loc = os.path.join(dest, name_sanitize + '.xml')
+            get_logger().info("Writing to file %s", file_loc)
+            with open(file_loc, 'wb') as f:
+                f.write(raw_rec.xml)
+            try:
+                rec = process_doc(raw_rec.xml, csw_url, file_loc, harvest, csw_url,
+                                db)
+                if len(rec['validation_errors']):
+                    errors += 1
+                count += 1
+            except etree.XMLSyntaxError as e:
+                err_msg = "Record for '{}' had malformed XML, skipping".format(name)
+                rec = {
+                    "title": "",
+                    "description": "",
+                    "services": [],
+                    "hash_val": None,
+                    "validation_errors": [{
+                        "line_number": "?",
+                        "error": "XML Syntax Error: %s" % e.message
+                    }]
+                }
+                errors += 1
+                count += 1
+                get_logger().error(err_msg)
+            except:
+                get_logger().exception("Failed to create record: %s", name)
+                raise
+        # if we've exhausted all the csw matches, break out of the CSW
+        # fetch loop
+        if (csw.results['matches'] == csw.results['nextrecord'] - 1 or
+            batches >= max_batches):
+            break
+        else:
+            rec_offset = csw.results['nextrecord']
+            batches += 1
+
     return count, errors
 
 

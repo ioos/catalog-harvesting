@@ -23,26 +23,45 @@ def parse_records(db, harvest_obj, link, location):
     records without validation errors and the quantity of records with
     validation errors.
 
-    :param db: MongoDB Databse Object
+    :param db: MongoDB Database Object
     :param dict harvest_obj: A dictionary representing a harvest to be run
     :param str link: URL to the Record
     :param str location: File path to the XML document on local filesystem.
     '''
     with open(location, 'r') as f:
         doc = f.read()
+
+    parts = location.split('/')
+    organization = parts[-2]
+    filename = parts[-1]
+    waf_url = os.environ.get('WAF_URL_ROOT', 'http://registry.ioos.us/')
+    record_url = os.path.join(waf_url, organization, filename)
+    rec = process_doc(doc, record_url, location, harvest_obj, link, db)
+    return rec
+
+
+def process_doc(doc, record_url, location, harvest_obj, link, db):
+    """
+    Processes a document, validating the document and modifying any point
+    geometry, and then inserts a record object into the database.
+
+    :param str doc: A string which is parseable XML representing the record
+                    contents
+    :param str record_url: A URL to the record
+    :param str location: File path to the XML document on local filesystem.
+    :param dict harvest_obj: A dictionary representing a harvest to be run
+    :param str link: URL to the Record
+    :param db: MongoDB Database Object
+    """
     try:
-        parts = location.split('/')
-        organization = parts[-2]
-        filename = parts[-1]
-        waf_url = os.environ.get('WAF_URL_ROOT', 'http://registry.ioos.us/')
-        record_url = os.path.join(waf_url, organization, filename)
         rec = validate(doc)
         rec['record_url'] = record_url
         # After the validation has been performed, patch the geometry
         try:
             patch_geometry(location)
         except:
-            get_logger().exception("Failed to patch geometry for %s", link)
+            get_logger().exception("Failed to patch geometry for %s",
+                                   record_url)
             rec["validation_errors"] = [{
                 "line_number": "?",
                 "error": "Invalid Geometry. See gmd:EX_GeographicBoundingBox"
@@ -53,8 +72,7 @@ def parse_records(db, harvest_obj, link, location):
         rec['harvest_id'] = harvest_obj['_id']
         # hash the xml contents
     except etree.XMLSyntaxError as e:
-        err_msg = "Record for '{}' had malformed XML, skipping".format(
-                  link)
+        err_msg = "Record for '{}' had malformed XML, skipping".format(link)
         rec = {
             "title": "",
             "description": "",
@@ -67,7 +85,7 @@ def parse_records(db, harvest_obj, link, location):
         }
         get_logger().error(err_msg)
     except:
-        get_logger().exception("Failed to create record: %s", link)
+        get_logger().exception("Failed to create record: %s", record_url)
         raise
     # upsert the record based on whether the url is already existing
     db.Records.insert(rec)
@@ -98,28 +116,36 @@ def validate(xml_string):
 
     :param str xml_string: A string containing an XML ISO-19115-2 Document
     '''
+
     hash_val = hashlib.md5(xml_string).hexdigest()
     iso_obj = etree.fromstring(xml_string)
     nsmap = iso_obj.nsmap
     if None in nsmap:
         del nsmap[None]
-    file_id = (iso_obj.xpath("./gmd:fileIdentifier/gco:CharacterString/text()", namespaces=nsmap) or [None])[0]
+    file_id = (iso_obj.xpath("./gmd:fileIdentifier/gco:CharacterString/text()",
+                             namespaces=nsmap) or [None])[0]
     di_elem = iso_obj.find(".//gmd:MD_DataIdentification", nsmap)
     di = iso.MD_DataIdentification(di_elem, None)
-    sv_ident = iso_obj.findall(".//srv:SV_ServiceIdentification", nsmap)
     services = []
-    for sv in sv_ident:
-        serv = iso.SV_ServiceIdentification(sv)
-        # get all the service endpoints
-        for op in serv.operations:
-            for cp in op['connectpoint']:
-                service_type = cp.protocol
-                service_url = cp.url
-                services.append({'service_type': service_type,
-                                 'service_url': service_url})
+    try:
+        sv_ident = iso_obj.findall(".//srv:SV_ServiceIdentification", nsmap)
+        for sv in sv_ident:
+            serv = iso.SV_ServiceIdentification(sv)
+            # get all the service endpoints
+            for op in serv.operations:
+                for cp in op['connectpoint']:
+                    service_type = cp.protocol
+                    service_url = cp.url
+                    services.append({'service_type': service_type,
+                                    'service_url': service_url})
+    # if srv not found, SyntaxError is thrown.  in that case, keep services
+    # empty
+    except SyntaxError:
+        pass
 
-    validation_errors = [{'error': e, 'line_number': l} for e, l in
-                         ISO19139NGDCSchema.is_valid(iso_obj)[-1]]
+    validation_errors = [{'error': e,
+                          'line_number': l} for e, l
+                         in ISO19139NGDCSchema.is_valid(iso_obj)[-1]]
 
     return {"title": di.title,
             "description": di.abstract,
