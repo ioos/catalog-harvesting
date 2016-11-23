@@ -5,6 +5,7 @@ harvest.py
 A set of modules to support downloading and synchronizing a WAF
 '''
 from catalog_harvesting.waf_parser import WAFParser
+from catalog_harvesting.erddap_waf_parser import ERDDAPWAFParser
 from catalog_harvesting import get_logger
 from catalog_harvesting.records import (parse_records, validate,
                                         process_doc, patch_geometry)
@@ -67,6 +68,8 @@ def download_harvest(db, harvest, dest):
         path = os.path.join(dest, provider_str)
         if harvest['harvest_type'] == 'WAF':
             records, errors = download_waf(db, harvest, src, path)
+        elif harvest['harvest_type'] == 'ERDDAP-WAF':
+            records, errors = download_erddap_waf(db, harvest, src, path)
         elif harvest['harvest_type'] == 'CSW':
             records, errors = download_csw(db, harvest, src, path)
         else:
@@ -121,6 +124,46 @@ def download_waf(db, harvest, src, dest):
         os.makedirs(dest)
 
     waf_parser = WAFParser(src)
+    db.Records.remove({"harvest_id": harvest['_id']})
+
+    count = 0
+    errors = 0
+    for link in waf_parser.parse():
+        get_logger().info("Downloading %s", link)
+        try:
+            doc_name = link.split('/')[-1]
+            local_filename = os.path.join(dest, doc_name)
+            # CKAN only looks for XML documents for the harvester
+            if not local_filename.endswith('.xml'):
+                local_filename += '.xml'
+            download_file(link, local_filename)
+            rec = parse_records(db, harvest, link, local_filename)
+            if len(rec['validation_errors']):
+                errors += 1
+            count += 1
+        except KeyboardInterrupt:
+            raise
+        except Exception:
+            errors += 1
+            get_logger().exception("Failed to download")
+            continue
+    return count, errors
+
+
+def download_erddap_waf(db, harvest, src, dest):
+    '''
+    Downloads a WAF's from ERDDAP to a destination
+
+    :param db: Mongo DB Client
+    :param dict harvest: A dictionary returned from the mongo collection for
+                         harvests.
+    :param url src: URL to the WAF
+    :param str dest: Folder to download to
+    '''
+    if not os.path.exists(dest):
+        os.makedirs(dest)
+
+    waf_parser = ERDDAPWAFParser(src)
     db.Records.remove({"harvest_id": harvest['_id']})
 
     count = 0
