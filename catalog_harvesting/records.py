@@ -74,13 +74,14 @@ def process_doc(doc, record_url, location, harvest_obj, link, db):
     except etree.XMLSyntaxError as e:
         err_msg = "Record for '{}' had malformed XML, skipping".format(link)
         rec = {
-            "title": "",
+            "title": record_url,
             "description": "",
             "services": [],
             "hash_val": None,
+            "harvest_id": harvest_obj['_id'],
             "validation_errors": [{
                 "line_number": "?",
-                "error": "XML Syntax Error: %s" % e.message
+                "error": "XML Syntax Error: %s" % (e.message or "Malformed XML")
             }]
         }
         get_logger().error(err_msg)
