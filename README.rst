@@ -37,7 +37,7 @@ Several environment variables drive the project's configuration:
 
 - ``OUTPUT_DIR``: Where the contents are written to
 - ``MONGO_URL``: The connection string to the MongoDB database. Example: mongodb://localhost:27017/registry
-- ``REDIS_URL``: The connection string to the Redis key-store. Example: redis://localhost:6379
+- ``REDIS_URL``: The connection string to the Redis key-store. Example: redis://localhost:6379/0
 
 Usage
 -----
@@ -49,6 +49,10 @@ To run the project::
 To manually execute a one-time harvest::
 
     catalog-harvest -s <MongoDB URL> -d <WAF Directory> -v
+
+To run a worker process::
+
+    rqworker
 
 Docker
 ------
