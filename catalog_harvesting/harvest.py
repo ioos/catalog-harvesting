@@ -108,7 +108,13 @@ def send_notifications(db, harvest):
     '''
     users = db.users.find({"profile.organization": harvest['organization']})
     mail = Mail()
-    recipients = [user['email'] for user in list(users) if throttle_email(user['email'])]
+    emails = []
+    for user in list(users):
+        user_emails = user['emails']
+        if user_emails and user_emails[0]['address']:
+            emails.append(user_emails[0]['address'])
+
+    recipients = [email for email in emails if throttle_email(email)]
     # If there are no recipients, obviously don't send an email
     if not recipients:
         return
