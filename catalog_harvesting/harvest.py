@@ -63,7 +63,8 @@ def download_harvest(db, harvest, dest):
     get_logger().info('harvesting: %s' % src)
     db.Harvests.update({"_id": harvest['_id']}, {
         "$set": {
-            "last_harvest_dt": "harvesting"
+            "last_harvest_dt": "harvesting",
+            "last_harvest_status": None
         }
     })
     try:
@@ -82,7 +83,8 @@ def download_harvest(db, harvest, dest):
                 "last_harvest_dt": datetime.utcnow(),
                 "last_record_count": records,
                 "last_good_count": (records - errors),
-                "last_bad_count": errors
+                "last_bad_count": errors,
+                "last_harvest_status": "ok"
             }
         })
         trigger_ckan_harvest(db, harvest)
@@ -92,7 +94,8 @@ def download_harvest(db, harvest, dest):
                                harvest['url'])
         db.Harvests.update({"_id": harvest['_id']}, {
             "$set": {
-                "last_harvest_dt": datetime.utcnow()
+                "last_harvest_dt": datetime.utcnow(),
+                "last_harvest_status": "fail"
             }
         })
 
