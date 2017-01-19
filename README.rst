@@ -39,6 +39,20 @@ Several environment variables drive the project's configuration:
 - ``MONGO_URL``: The connection string to the MongoDB database. Example: mongodb://localhost:27017/registry
 - ``REDIS_URL``: The connection string to the Redis key-store. Example: redis://localhost:6379/0
 
+There are several email configuration options that mimic the Flask-Email project's configuration:
+
+- ``MAIL_SERVER``: Defaults to ``localhost``. The SMTP server to connect to.
+- ``MAIL_PORT``: Defaults to 25. The port the SMTP server is listening on.
+- ``MAIL_USE_TLS``: Whether the SMTP client should connect using TLS.
+- ``MAIL_USE_SSL``: Whether the SMTP client should connect using SSL.
+- ``MAIL_USERNAME``: The username for authenticated connections.
+- ``MAIL_PASSWORD``: The password for authenticated connections.
+- ``MAIL_DEFAULT_SENDER``: The e-mail address the notifications should be sent from. Defaults to admin@ioos.us
+- ``MAIL_MAX_EMAILS``: Set the max amount of emails to send before reconnecting
+- ``MAIL_DEBUG``: Turn on debugging for SMTP
+- ``MAIL_ASCII_ATTACHMENTS``: If true, filenames will be converted to an ASCII equivalent.
+- ``MAIL_SUPPRESS_SEND``: If true, emails won't actually be sent.
+
 Usage
 -----
 

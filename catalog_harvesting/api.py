@@ -7,6 +7,7 @@ A microservice designed to perform small tasks in association with the CLI
 
 from flask import Flask, jsonify
 from pymongo import MongoClient
+from catalog_harvesting import get_redis_connection
 from catalog_harvesting.harvest import download_harvest
 from rq import Queue
 import os
@@ -37,20 +38,6 @@ def init_db():
     db = conn[db_name]
     return db
 
-
-def get_redis_connection():
-    redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379')
-    protocol, address = redis_url.split('://')
-    if protocol != 'redis':
-        raise ValueError('REDIS_URL must be protocol redis')
-    connection_str, path = address.split('/')
-    if ':' in connection_str:
-        host, port = connection_str.split(':')
-    else:
-        port = 6379
-        host = connection_str
-    db = path
-    return host, port, db
 
 REDIS_HOST, REDIS_PORT, REDIS_DB = get_redis_connection()
 redis_pool = redis.ConnectionPool(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB)
