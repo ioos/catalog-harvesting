@@ -6,18 +6,21 @@ A set of modules to support downloading and synchronizing a WAF
 '''
 from catalog_harvesting.waf_parser import WAFParser
 from catalog_harvesting.erddap_waf_parser import ERDDAPWAFParser
-from catalog_harvesting import get_logger
+from catalog_harvesting import get_logger, get_redis_connection
 from catalog_harvesting.records import (parse_records, validate,
                                         process_doc, patch_geometry)
 from catalog_harvesting.ckan_api import get_harvest_info, create_harvest_job
+from catalog_harvesting.notify import Mail, Message, MAIL_DEFAULT_SENDER
 from owslib.csw import CatalogueServiceWeb
 from owslib.iso import namespaces
 from pymongo import MongoClient
 from datetime import datetime
 from lxml import etree
+from base64 import b64encode
 import requests
 import os
 import time
+import redis
 
 
 def download_from_db(conn_string, dest):
@@ -84,6 +87,7 @@ def download_harvest(db, harvest, dest):
         })
         trigger_ckan_harvest(db, harvest)
     except:
+        send_notifications(db, harvest)
         get_logger().exception("Failed to successfully harvest %s",
                                harvest['url'])
         db.Harvests.update({"_id": harvest['_id']}, {
@@ -91,6 +95,60 @@ def download_harvest(db, harvest, dest):
                 "last_harvest_dt": datetime.utcnow()
             }
         })
+
+
+def send_notifications(db, harvest):
+    '''
+    Send an email to all users belonging to the organization of the harvest
+    notifying them that the harvest failed.
+
+    :param db: Mongo DB Client
+    :param dict harvest: A dictionary returned from the mongo collection for
+                         harvests.
+    '''
+    users = db.users.find({"profile.organization": harvest['organization']})
+    mail = Mail()
+    emails = []
+    for user in list(users):
+        user_emails = user['emails']
+        if user_emails and user_emails[0]['address']:
+            emails.append(user_emails[0]['address'])
+
+    recipients = [email for email in emails if throttle_email(email)]
+    # If there are no recipients, obviously don't send an email
+    if not recipients:
+        return
+    for recipient in recipients:
+        get_logger().info("Sending a notification to %s", recipient)
+    msg = Message("Failed to correctly harvest",
+                  sender=MAIL_DEFAULT_SENDER or "admin@ioos.us",
+                  recipients=recipients)
+    body = ("We were unable to harvest from the harvest source {url}. "
+            "Please verify that the source URL is correct and contains "
+            "valid XML Documents. \n\n"
+            "Thanks!\nIOOS Catalog Harvester".format(url=harvest['url']))
+    msg.body = body
+    mail.send(msg)
+
+
+def throttle_email(email, timeout=3600):
+    '''
+    Returns True if an email has already been sent in the last timeout seconds.
+
+    :param str email: Email address of the recipient
+    :param int timeout: Seconds to wait until the next email can be sent
+    '''
+    host, port, db = get_redis_connection()
+    redis_pool = redis.ConnectionPool(host=host, port=port, db=db)
+    rc = redis.Redis(connection_pool=redis_pool)
+
+    key = 'harvesting:notifications:' + b64encode(email)
+
+    value = rc.get(key)
+    if value is None:
+        rc.setex(key, 1, timeout)
+        return True
+    return False
 
 
 def trigger_ckan_harvest(db, harvest):
