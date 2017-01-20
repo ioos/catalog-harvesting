@@ -70,6 +70,7 @@ def process_doc(doc, record_url, location, harvest_obj, link, db):
         rec['url'] = link
         rec['update_time'] = datetime.now()
         rec['harvest_id'] = harvest_obj['_id']
+        rec['location'] = location
         # hash the xml contents
     except etree.XMLSyntaxError as e:
         err_msg = "Record for '{}' had malformed XML, skipping".format(link)
@@ -89,7 +90,8 @@ def process_doc(doc, record_url, location, harvest_obj, link, db):
         get_logger().exception("Failed to create record: %s", record_url)
         raise
     # upsert the record based on whether the url is already existing
-    db.Records.insert(rec)
+    insert_result = db.Records.insert(rec)
+    rec['_id'] = str(insert_result)
     return rec
 
 
