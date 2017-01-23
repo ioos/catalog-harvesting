@@ -80,6 +80,7 @@ def process_doc(doc, record_url, location, harvest_obj, link, db):
             "services": [],
             "hash_val": None,
             "harvest_id": harvest_obj['_id'],
+            "location": location,
             "validation_errors": [{
                 "line_number": "?",
                 "error": "XML Syntax Error: %s" % (e.message or "Malformed XML")
@@ -168,7 +169,6 @@ def patch_geometry(location):
     '''
     with open(location, 'r') as f:
         buf = f.read()
-    get_logger().info("Content-Length INPUT: %s", len(buf))
     xml_root = etree.fromstring(buf)
     nsmap = xml_root.nsmap
     if None in nsmap:
@@ -192,6 +192,5 @@ def patch_geometry(location):
 
         # Only once we make sure it's a point can we update the file
         buf = etree.tostring(xml_root)
-        get_logger().info("Content-Length OUTPUT: %s", len(buf))
         with open(location, 'wb') as f:
             f.write(buf)
