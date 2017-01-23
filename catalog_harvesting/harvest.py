@@ -232,7 +232,9 @@ def download_erddap_waf(db, harvest, src, dest):
         os.makedirs(dest)
 
     waf_parser = ERDDAPWAFParser(src)
+    old_records = list(db.Records.find({"harvest_id": harvest['_id']}))
     db.Records.remove({"harvest_id": harvest['_id']})
+    new_records = []
 
     count = 0
     errors = 0
@@ -246,6 +248,7 @@ def download_erddap_waf(db, harvest, src, dest):
                 local_filename += '.xml'
             download_file(link, local_filename)
             rec = parse_records(db, harvest, link, local_filename)
+            new_records.append(rec)
             if len(rec['validation_errors']):
                 errors += 1
             count += 1
@@ -255,6 +258,7 @@ def download_erddap_waf(db, harvest, src, dest):
             errors += 1
             get_logger().exception("Failed to download")
             continue
+    purge_old_records(new_records, old_records)
     return count, errors
 
 
@@ -374,7 +378,8 @@ def purge_old_records(new_records, old_records):
     :param list new_records: List of records
     :param list old_records: List of records
     '''
-    new_files = [r['location'] for r in new_records]
+    get_logger().info("Purging old records from WAF")
+    new_files = [r['location'] for r in new_records if 'location' in r]
     removal = [r for r in old_records if 'location' in r and r['location'] not in new_files]
     for record in removal:
         if 'location' not in record:
