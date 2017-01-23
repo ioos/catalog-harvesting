@@ -7,8 +7,7 @@ A set of modules to support downloading and synchronizing a WAF
 from catalog_harvesting.waf_parser import WAFParser
 from catalog_harvesting.erddap_waf_parser import ERDDAPWAFParser
 from catalog_harvesting import get_logger, get_redis_connection
-from catalog_harvesting.records import (parse_records, validate,
-                                        process_doc, patch_geometry)
+from catalog_harvesting.records import parse_records, process_doc
 from catalog_harvesting.ckan_api import get_harvest_info, create_harvest_job
 from catalog_harvesting.notify import Mail, Message, MAIL_DEFAULT_SENDER
 from owslib.csw import CatalogueServiceWeb
@@ -185,29 +184,37 @@ def download_waf(db, harvest, src, dest):
         os.makedirs(dest)
 
     waf_parser = WAFParser(src)
+    old_records = list(db.Records.find({"harvest_id": harvest['_id']}))
     db.Records.remove({"harvest_id": harvest['_id']})
+    new_records = []
 
     count = 0
     errors = 0
     for link in waf_parser.parse():
         get_logger().info("Downloading %s", link)
         try:
+
             doc_name = link.split('/')[-1]
             local_filename = os.path.join(dest, doc_name)
+
             # CKAN only looks for XML documents for the harvester
             if not local_filename.endswith('.xml'):
                 local_filename += '.xml'
             download_file(link, local_filename)
             rec = parse_records(db, harvest, link, local_filename)
+            new_records.append(rec)
+
             if len(rec['validation_errors']):
                 errors += 1
             count += 1
+
         except KeyboardInterrupt:
             raise
         except Exception:
             errors += 1
             get_logger().exception("Failed to download")
             continue
+    purge_old_records(new_records, old_records)
     return count, errors
 
 
@@ -358,4 +365,21 @@ def force_clean(path):
             if (now - mtime) > (24 * 3600):
                 get_logger().info("Removing %s", filepath)
                 os.remove(filepath)
+
+
+def purge_old_records(new_records, old_records):
+    '''
+    Deletes any records in old_records that aren't in new_records
+
+    :param list new_records: List of records
+    :param list old_records: List of records
+    '''
+    new_files = [r['location'] for r in new_records]
+    removal = [r for r in old_records if 'location' in r and r['location'] not in new_files]
+    for record in removal:
+        if 'location' not in record:
+            continue
+        if os.path.exists(record['location']):
+            get_logger().info("Removing %s", record['location'])
+            os.remove(record['location'])
 
