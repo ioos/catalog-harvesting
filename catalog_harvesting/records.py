@@ -79,6 +79,7 @@ def process_doc(doc, record_url, location, harvest_obj, link, db):
             "description": "",
             "services": [],
             "hash_val": None,
+            "metadata_data": None,
             "harvest_id": harvest_obj['_id'],
             "location": location,
             "validation_errors": [{
@@ -130,6 +131,7 @@ def validate(xml_string):
                              namespaces=nsmap) or [None])[0]
     di_elem = iso_obj.find(".//gmd:MD_DataIdentification", nsmap)
     di = iso.MD_DataIdentification(di_elem, None)
+    date_element = (iso_obj.xpath('//gmd:dateStamp/gco:Date/text()', namespaces=nsmap) or [None])[0]
     services = []
     try:
         sv_ident = iso_obj.findall(".//srv:SV_ServiceIdentification", nsmap)
@@ -155,6 +157,7 @@ def validate(xml_string):
             "description": di.abstract,
             "services": services,
             "hash_val": hash_val,
+            "metadata_date": date_element,
             "file_id": file_id,
             "validation_errors": validation_errors}
 
