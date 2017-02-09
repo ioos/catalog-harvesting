@@ -50,7 +50,11 @@ def main():
 
     if args.force_clean and args.dest:
         get_logger().info("Removing stale datasets")
-        force_clean(args.dest)
+        max_days = os.getenv('STALE_EXPIRATION_DAYS', None)
+        if max_days is not None:
+            force_clean(args.dest, max_days)
+        else:
+            force_clean(args.dest)
 
 
 def setup_logging(

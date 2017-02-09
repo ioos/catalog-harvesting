@@ -38,6 +38,7 @@ Several environment variables drive the project's configuration:
 - ``OUTPUT_DIR``: Where the contents are written to
 - ``MONGO_URL``: The connection string to the MongoDB database. Example: mongodb://localhost:27017/registry
 - ``REDIS_URL``: The connection string to the Redis key-store. Example: redis://localhost:6379/0
+- ``STALE_EXPIRATION_DAYS``: The number of days to keep a dataset which has not been updated before it will be removed by the cleaning job.
 
 Usage
 -----

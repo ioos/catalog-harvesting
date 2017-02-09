@@ -279,11 +279,14 @@ def download_file(url, location):
     return location
 
 
-def force_clean(path):
+def force_clean(path, max_days=3):
     '''
-    Deletes any files in path that end in .xml and are older than 1 day
+    Deletes any files in path that end in .xml and are older than the specified
+    number of days
 
     :param str path: Path to a folder to clean
+    :param int max_days: Maximum number of days to keep an old record before
+                         removing it.
     '''
     now = time.time()
     for root, dirs, files in os.walk(path):
@@ -294,7 +297,7 @@ def force_clean(path):
 
             file_st = os.stat(filepath)
             mtime = file_st.st_mtime
-            if (now - mtime) > (24 * 3600):
+            if (now - mtime) > (24 * 3600 * max_days):
                 get_logger().info("Removing %s", filepath)
                 os.remove(filepath)
 
