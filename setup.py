@@ -12,7 +12,7 @@ setup(
     version          = __version__,
     description      = 'Tools for synchronizing WAFs',
     packages         = find_packages(exclude=['tests', 'test.*']),
-    pacakge_data     = {'catalog_harvesting':['logging.josn']},
+    package_data     = {'catalog_harvesting':['logging.json']},
     long_description = readme(),
     author           = 'Luke Campbell',
     author_email     = 'luke.campbell@rpsgroup.com',
