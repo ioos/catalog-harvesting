@@ -50,7 +50,14 @@ def main():
 
     if args.force_clean and args.dest:
         get_logger().info("Removing stale datasets")
-        force_clean(args.dest)
+        try:
+            # get the STALE_EXPIRATION_DAYS and parse to int or set it to 3
+            # if unset
+            max_days = int(os.getenv('STALE_EXPIRATION_DAYS', 3))
+        # if the environment variable was unparseable to int, also set to 3
+        except ValueError:
+            max_days = 3
+        force_clean(args.dest, max_days)
 
 
 def setup_logging(
