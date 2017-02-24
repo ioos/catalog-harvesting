@@ -97,4 +97,4 @@ def get_harvest(harvest_id):
 
 
 if __name__ == '__main__':
-    app.run(port=3000, debug=True)
+    app.run(port=int(os.environ.get('WEB_PORT', 3000)), debug=True)

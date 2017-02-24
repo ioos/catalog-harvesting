@@ -47,10 +47,10 @@ def process_doc(doc, record_url, location, harvest_obj, link, db):
 
     :param str doc: A string which is parseable XML representing the record
                     contents
-    :param str record_url: A URL to the record
+    :param str record_url: A URL to the record in the Central WAF
     :param str location: File path to the XML document on local filesystem.
     :param dict harvest_obj: A dictionary representing a harvest to be run
-    :param str link: URL to the Record
+    :param str link: URL to the original document's URL
     :param db: MongoDB Database Object
     """
     try:

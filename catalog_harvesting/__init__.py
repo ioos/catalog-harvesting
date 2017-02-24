@@ -24,7 +24,7 @@ def get_logger():
 
 
 def get_redis_connection():
-    redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379')
+    redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
     protocol, address = redis_url.split('://')
     if protocol != 'redis':
         raise ValueError('REDIS_URL must be protocol redis')
