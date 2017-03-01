@@ -97,6 +97,32 @@ def download_harvest(db, harvest, dest):
         })
 
 
+def delete_harvest(db, harvest):
+    '''
+    Deletes a harvest, all associated attempts and records
+
+    :param db: MongoDB Client
+    :param dict harvest: A dictionary returned from the mongo collection for
+                         harvests.
+    '''
+
+    try:
+        # Remove attempts
+        records = list(db.Records.find({"harvest_id": harvest['_id']}))
+        for record in records:
+            if os.path.exists(record['location']):
+                get_logger().info("Removing %s", record['location'])
+                os.remove(record['location'])
+
+        db.Records.remove({"harvest_id": harvest['_id']})
+
+        db.Attempts.remove({"parent_harvest": harvest['_id']})
+        db.Harvests.remove({"_id": harvest['_id']})
+
+    except:
+        get_logger().exception("Could not successfully delete harvest")
+
+
 def send_notifications(db, harvest):
     '''
     Send an email to all users belonging to the organization of the harvest
@@ -314,4 +340,3 @@ def purge_old_records(new_records, old_records):
         if os.path.exists(record['location']):
             get_logger().info("Removing %s", record['location'])
             os.remove(record['location'])
-
