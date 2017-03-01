@@ -7,8 +7,8 @@ A microservice designed to perform small tasks in association with the CLI
 
 from flask import Flask, jsonify
 from pymongo import MongoClient
-from catalog_harvesting import get_redis_connection
-from catalog_harvesting.harvest import download_harvest
+from catalog_harvesting import get_redis_connection, get_logger
+from catalog_harvesting import harvest as harvest_api
 from rq import Queue
 import os
 import json
@@ -63,10 +63,21 @@ def harvest_job(harvest_id):
 
     :param str harvest_id: ID of harvest
     '''
-    collection = db.Harvests
-    harvest = collection.find_one({"_id": harvest_id})
-    download_harvest(db, harvest, OUTPUT_DIR)
+    harvest = db.Harvests.find_one({"_id": harvest_id})
+    harvest_api.download_harvest(db, harvest, OUTPUT_DIR)
 
+    return json.dumps({"result": True})
+
+
+def delete_harvest_job(harvest_id):
+    '''
+    Schedules the deletion of a harvest
+
+    :param str harvest_id: harvest_id
+    '''
+    get_logger().info("Deleting harvest")
+    harvest = db.Harvests.find_one({"_id": harvest_id})
+    harvest_api.delete_harvest(db, harvest)
     return json.dumps({"result": True})
 
 
@@ -79,7 +90,6 @@ def get_harvest(harvest_id):
 
     :param str harvest_id: MongoDB ID for the harvest
     '''
-    global db
     try:
         db.Harvests.update({"_id": harvest_id}, {
             "$set": {
@@ -93,6 +103,12 @@ def get_harvest(harvest_id):
         return jsonify(error=type(e).__name__, message=e.message), 500
 
     queue.enqueue(harvest_job, harvest_id, timeout=900)
+    return jsonify({"result": True})
+
+
+@app.route("/api/harvest/<string:harvest_id>", methods=['DELETE'])
+def delete_harvest(harvest_id):
+    queue.enqueue(delete_harvest_job, harvest_id, timeout=900)
     return jsonify({"result": True})
 
 
