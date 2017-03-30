@@ -219,11 +219,18 @@ def download_waf(db, harvest, src, dest):
         try:
 
             doc_name = link.split('/')[-1]
-            local_filename = os.path.join(dest, doc_name)
-
+            if '?' in doc_name:
+                doc_name = doc_name.split('?')[0]
+            # If the filename is greater than 47 characters, nginx will replace
+            # the end with '...' but we need '.xml' for CKAN to pick it up
+            if len(doc_name) > 43:
+                doc_name = doc_name[:43]
             # CKAN only looks for XML documents for the harvester
-            if not local_filename.endswith('.xml'):
-                local_filename += '.xml'
+            if not doc_name.endswith('.xml'):
+                doc_name += '.xml'
+            local_filename = os.path.join(dest, doc_name)
+            get_logger().info("Saving to %s", local_filename)
+
             download_file(link, local_filename)
             rec = parse_records(db, harvest, link, local_filename)
             new_records.append(rec)
