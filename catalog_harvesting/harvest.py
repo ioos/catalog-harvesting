@@ -11,6 +11,7 @@ from catalog_harvesting import get_logger, get_redis_connection
 from catalog_harvesting.records import parse_records
 from catalog_harvesting.ckan_api import get_harvest_info, create_harvest_job
 from catalog_harvesting.notify import Mail, Message, MAIL_DEFAULT_SENDER
+from hashlib import sha1
 from pymongo import MongoClient
 from datetime import datetime
 from base64 import b64encode
@@ -217,17 +218,8 @@ def download_waf(db, harvest, src, dest):
     for link in waf_parser.parse():
         get_logger().info("Downloading %s", link)
         try:
-
-            doc_name = link.split('/')[-1]
-            if '?' in doc_name:
-                doc_name = doc_name.split('?')[0]
-            # If the filename is greater than 47 characters, nginx will replace
-            # the end with '...' but we need '.xml' for CKAN to pick it up
-            if len(doc_name) > 43:
-                doc_name = doc_name[:43]
-            # CKAN only looks for XML documents for the harvester
-            if not doc_name.endswith('.xml'):
-                doc_name += '.xml'
+            link_hash = sha1(link.encode('utf-8')).hexdigest()
+            doc_name = link_hash + '.xml'
             local_filename = os.path.join(dest, doc_name)
             get_logger().info("Saving to %s", local_filename)
 
