@@ -187,12 +187,22 @@ def patch_geometry(location):
     ur_lat = bbox.xpath('./gmd:northBoundLatitude/gco:Decimal', namespaces=nsmap)[0]
     bbox = [[float(ll_lon.text), float(ll_lat.text)], [float(ur_lon.text), float(ur_lat.text)]]
 
-    if bbox[0] == bbox[1]:
+    # In decimal degrees, 5 decimal places is accurate to within +-1 meter, 6
+    # decimal places accurate down to cm.
+
+    should_patch = False
+
+    if ll_lon == ur_lon:
         ll_lon.text = str(float(ll_lon.text) - 0.00001)
         ur_lon.text = str(float(ur_lon.text) + 0.00001)
+        should_patch = True
+
+    if ll_lat == ur_lat:
         ll_lat.text = str(float(ll_lat.text) - 0.00001)
         ur_lat.text = str(float(ur_lat.text) + 0.00001)
+        should_patch = True
 
+    if should_patch:
         # Only once we make sure it's a point can we update the file
         buf = etree.tostring(xml_root)
         with open(location, 'wb') as f:
