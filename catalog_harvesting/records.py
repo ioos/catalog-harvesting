@@ -192,14 +192,16 @@ def patch_geometry(location):
 
     should_patch = False
 
-    if ll_lon == ur_lon:
-        ll_lon.text = str(float(ll_lon.text) - 0.00001)
-        ur_lon.text = str(float(ur_lon.text) + 0.00001)
+    epsilon = 0.00001
+
+    if abs(bbox[0][0] - bbox[1][0]) < epsilon:
+        ll_lon.text = str(float(ll_lon.text) - epsilon)
+        ur_lon.text = str(float(ur_lon.text) + epsilon)
         should_patch = True
 
-    if ll_lat == ur_lat:
-        ll_lat.text = str(float(ll_lat.text) - 0.00001)
-        ur_lat.text = str(float(ur_lat.text) + 0.00001)
+    if abs(bbox[0][1] - bbox[1][1]) < epsilon:
+        ll_lat.text = str(float(ll_lat.text) - epsilon)
+        ur_lat.text = str(float(ur_lat.text) + epsilon)
         should_patch = True
 
     if should_patch:
