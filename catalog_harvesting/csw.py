@@ -27,19 +27,20 @@ def get_records(csw, max_batches=10000):
 
     # set a maximum number of record batches just as a precaution in case
     # the CSW fails to operate correctly while fetching, for example
-    rec_offset = 0
+    position = 1
     batches = 0
     while True:
         csw.getrecords2(outputschema=namespaces['gmd'],  # Return ISO 19115 metadata
-                        startposition=rec_offset,
+                        startposition=position,
                         esn='full', maxrecords=100)
         yield csw
 
-        if csw.results['matches'] == csw.results['nextrecord'] - 1 or \
-                batches >= max_batches:
+        # nextrecord is 0 when all matches have been exhausted according to
+        # the CSW 2.0.2 spec
+        if csw.results['nextrecord'] == 0 or batches >= max_batches:
             break
 
-        rec_offset = csw.results['nextrecord']
+        position = csw.results['nextrecord']
         batches += 1
 
 
