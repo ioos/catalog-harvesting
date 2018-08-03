@@ -61,6 +61,9 @@ class WAFParser(object):
         links = self.get_links(response.content)
         follow = []
         for link, text in links:
+            # Some links might not have href. Skip them.
+            if link is None:
+               continue
             # Deal with relative links
             if link.startswith('..'):
                 continue
