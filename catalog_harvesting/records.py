@@ -15,6 +15,10 @@ import hashlib
 import requests
 import os
 
+# ensure ISO/TC211 namespaces are defined
+GLOBAL_NS = {"gmd": "http://www.isotc211.org/2005/gmd",
+             "gco": "http://www.isotc211.org/2005/gco"}
+
 
 def parse_records(db, harvest_obj, link, location):
     '''
@@ -107,7 +111,7 @@ def iso_get(iso_endpoint):
     :rtype: dict
     '''
 
-    resp = requests.get(iso_endpoint)
+    resp = requests.get(iso_endpoint, timeout=10)
     if resp.status_code != 200:
         raise IOError("Failed to retrieve document: HTTP %s" % resp.status_code)
     validation = validate(resp.content)
@@ -125,13 +129,15 @@ def validate(xml_string):
     hash_val = hashlib.md5(xml_string).hexdigest()
     iso_obj = etree.fromstring(xml_string)
     nsmap = iso_obj.nsmap
+    nsmap.update(GLOBAL_NS)
     if None in nsmap:
         del nsmap[None]
     file_id = (iso_obj.xpath("./gmd:fileIdentifier/gco:CharacterString/text()",
-                             namespaces=nsmap) or [None])[0]
+                                 namespaces=nsmap) or [None])[0]
     di_elem = iso_obj.find(".//gmd:MD_DataIdentification", nsmap)
     di = iso.MD_DataIdentification(di_elem, None)
     date_element = (iso_obj.xpath('//gmd:dateStamp/gco:Date/text()', namespaces=nsmap) or [None])[0]
+
     services = []
     try:
         sv_ident = iso_obj.findall(".//srv:SV_ServiceIdentification", nsmap)
@@ -176,6 +182,7 @@ def patch_geometry(location):
     nsmap = xml_root.nsmap
     if None in nsmap:
         del nsmap[None]
+    nsmap.update(GLOBAL_NS)
 
     bbox = (xml_root.xpath("./gmd:identificationInfo/gmd:MD_DataIdentification/gmd:extent/gmd:EX_Extent/gmd:geographicElement/gmd:EX_GeographicBoundingBox", namespaces=nsmap) or [None])[0]
     if bbox is None:
