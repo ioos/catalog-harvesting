@@ -37,7 +37,12 @@ def get_records(csw, max_batches=10000):
 
         # nextrecord is 0 when all matches have been exhausted according to
         # the CSW 2.0.2 spec
-        if csw.results['nextrecord'] == 0 or batches >= max_batches:
+        if (csw.results['nextrecord'] == 0 or
+            # Some GeoNetwork implementations use nextrecord equal to
+            # matches + 1.  Cover this (non-standard?) case so that infinite
+            # loops don't occur
+            csw.results['nextrecord'] > csw.results['matches'] or
+            batches >= max_batches):
             break
 
         position = csw.results['nextrecord']
