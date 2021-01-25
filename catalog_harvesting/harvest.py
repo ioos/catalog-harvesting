@@ -209,9 +209,12 @@ def download_waf(db, harvest, src, dest):
         os.makedirs(dest)
 
     waf_parser = WAFParser(src)
-    old_records = list(db.Records.find({"harvest_id": harvest['_id']}))
+    old_records = set(rec["location"] for rec in
+                      db.Records.find({"harvest_id": harvest['_id'],
+                                       "location": {"$exists": True}},
+                                      {"location": True}))
     db.Records.remove({"harvest_id": harvest['_id']})
-    new_records = []
+    new_records = set()
 
     count = 0
     errors = 0
@@ -225,7 +228,7 @@ def download_waf(db, harvest, src, dest):
 
             download_file(link, local_filename)
             rec = parse_records(db, harvest, link, local_filename)
-            new_records.append(rec)
+            new_records.add(rec["location"])
 
             if len(rec['validation_errors']):
                 errors += 1
@@ -255,9 +258,13 @@ def download_erddap_waf(db, harvest, src, dest):
         os.makedirs(dest)
 
     waf_parser = ERDDAPWAFParser(src)
-    old_records = list(db.Records.find({"harvest_id": harvest['_id']}))
+
+    old_records = set(rec["location"] for rec in
+                      db.Records.find({"harvest_id": harvest['_id'],
+                                       "location": {"$exists": True}},
+                                      {"location": True}))
     db.Records.remove({"harvest_id": harvest['_id']})
-    new_records = []
+    new_records = set()
 
     count = 0
     errors = 0
@@ -271,7 +278,7 @@ def download_erddap_waf(db, harvest, src, dest):
                 local_filename += '.xml'
             download_file(link, local_filename)
             rec = parse_records(db, harvest, link, local_filename)
-            new_records.append(rec)
+            new_records.add(rec["location"])
             if len(rec['validation_errors']):
                 errors += 1
             count += 1
@@ -331,11 +338,8 @@ def purge_old_records(new_records, old_records):
     :param list old_records: List of records
     '''
     get_logger().info("Purging old records from WAF")
-    new_files = [r['location'] for r in new_records if 'location' in r]
-    removal = [r for r in old_records if 'location' in r and r['location'] not in new_files]
-    for record in removal:
-        if 'location' not in record:
-            continue
-        if os.path.exists(record['location']):
-            get_logger().info("Removing %s", record['location'])
-            os.remove(record['location'])
+    removal = old_records - new_records
+    for location in removal:
+        if os.path.exists(location):
+            get_logger().info("Removing %s", location)
+            os.remove(location)
