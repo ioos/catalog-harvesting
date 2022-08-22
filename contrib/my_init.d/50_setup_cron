@@ -5,7 +5,7 @@ set -eu
 : ${ENABLE_CRON:=false}
 : ${WAF_URL_ROOT:=https://registry.ioos.us/waf/}
 
-if [[ "$ENABLE_CRON" == "true" ]]; then
+if [[ "$ENABLE_CRON" == "true" ]] && ! grep -Fq WAF_URL_ROOT /etc/crontab; then
     echo "Enabling CRON"
     echo "WAF_URL_ROOT=${WAF_URL_ROOT}" >> /etc/crontab
 
