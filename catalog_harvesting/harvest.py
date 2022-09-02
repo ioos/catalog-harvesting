@@ -299,7 +299,7 @@ def download_file(url, location):
     :param str url: URL to download document
     :param str location: Full filename to write to
     '''
-    r = requests.get(url, stream=True)
+    r = requests.get(url, stream=True, timeout=30)
     with open(location, 'wb') as f:
         for chunk in r.iter_content(chunk_size=1024 * 1024):
             if chunk:
